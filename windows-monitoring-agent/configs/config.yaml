@@ -1,0 +1,3 @@
+# configs/config.yaml
+LogFilePath: "./agent.log"
+Interval: 60 # Polling interval in seconds
