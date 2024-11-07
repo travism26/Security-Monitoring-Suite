@@ -5,8 +5,12 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/travism26/windows-monitoring-agent/internal/agent"
 	"github.com/travism26/windows-monitoring-agent/internal/config"
+	"github.com/travism26/windows-monitoring-agent/internal/exporter"
 	"github.com/travism26/windows-monitoring-agent/internal/logger"
+	"github.com/travism26/windows-monitoring-agent/internal/metrics"
+	"github.com/travism26/windows-monitoring-agent/internal/monitor"
 )
 
 func main() {
@@ -17,6 +21,14 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
+
+	// Initialize components
+	mon := monitor.NewMonitor()
+	mc := metrics.NewMetricsCollector(mon)
+	exp := exporter.NewExporter(cfg.LogFilePath)
+
+	ag := agent.NewAgent(cfg, mc, exp)
+	ag.Start()
 
 	// Initialize logger
 	logFile, err := logger.Init(cfg.LogFilePath)
@@ -32,6 +44,7 @@ func main() {
 }
 
 func runMonitoringAgent(cfg *config.Config) {
+	log.Println("Agent is running and logging to", cfg.LogFilePath)
 	// Monitoring logic goes here
 	log.Println("Agent is running...")
 	// Add system monitoring code
