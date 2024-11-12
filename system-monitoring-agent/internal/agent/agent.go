@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/travism26/windows-monitoring-agent/internal/config"
-	"github.com/travism26/windows-monitoring-agent/internal/exporter"
-	"github.com/travism26/windows-monitoring-agent/internal/metrics"
+	"github.com/travism26/system-monitoring-agent/internal/config"
+	"github.com/travism26/system-monitoring-agent/internal/exporter"
+	"github.com/travism26/system-monitoring-agent/internal/metrics"
 )
 
 type Agent struct {

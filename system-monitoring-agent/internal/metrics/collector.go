@@ -1,7 +1,7 @@
 // internal/metrics/collector.go
 package metrics
 
-import "github.com/travism26/windows-monitoring-agent/internal/monitor"
+import "github.com/travism26/system-monitoring-agent/internal/monitor"
 
 type MetricsCollector struct {
 	monitor *monitor.Monitor

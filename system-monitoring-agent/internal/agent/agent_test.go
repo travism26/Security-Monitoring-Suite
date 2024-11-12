@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/travism26/windows-monitoring-agent/internal/config"
-	"github.com/travism26/windows-monitoring-agent/internal/exporter"
-	"github.com/travism26/windows-monitoring-agent/internal/metrics"
-	"github.com/travism26/windows-monitoring-agent/internal/monitor"
+	"github.com/travism26/system-monitoring-agent/internal/config"
+	"github.com/travism26/system-monitoring-agent/internal/exporter"
+	"github.com/travism26/system-monitoring-agent/internal/metrics"
+	"github.com/travism26/system-monitoring-agent/internal/monitor"
 )
 
 func TestNewAgent(t *testing.T) {

@@ -2,15 +2,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/travism26/windows-monitoring-agent/internal/agent"
-	"github.com/travism26/windows-monitoring-agent/internal/config"
-	"github.com/travism26/windows-monitoring-agent/internal/exporter"
-	"github.com/travism26/windows-monitoring-agent/internal/logger"
-	"github.com/travism26/windows-monitoring-agent/internal/metrics"
-	"github.com/travism26/windows-monitoring-agent/internal/monitor"
+	"github.com/travism26/system-monitoring-agent/internal/agent"
+	"github.com/travism26/system-monitoring-agent/internal/config"
+	"github.com/travism26/system-monitoring-agent/internal/exporter"
+	"github.com/travism26/system-monitoring-agent/internal/logger"
+	"github.com/travism26/system-monitoring-agent/internal/metrics"
+	"github.com/travism26/system-monitoring-agent/internal/monitor"
 )
 
 func main() {
@@ -28,6 +32,19 @@ func main() {
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
 	ag := agent.NewAgent(cfg, mc, exp)
+
+	// Handle termination signal
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Handle termination signal
+	go func() {
+		<-ctx.Done()
+		fmt.Println("Received termination signal, stopping agent...")
+		stop()
+		os.Exit(0)
+	}()
+
 	ag.Start()
 
 	// Initialize logger
