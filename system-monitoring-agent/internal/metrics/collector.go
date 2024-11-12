@@ -1,13 +1,13 @@
 // internal/metrics/collector.go
 package metrics
 
-import "github.com/travism26/system-monitoring-agent/internal/monitor"
+import "github.com/travism26/system-monitoring-agent/internal/core"
 
 type MetricsCollector struct {
-	monitor *monitor.Monitor
+	monitor core.Monitor
 }
 
-func NewMetricsCollector(m *monitor.Monitor) *MetricsCollector {
+func NewMetricsCollector(m core.Monitor) *MetricsCollector {
 	return &MetricsCollector{
 		monitor: m,
 	}
@@ -16,16 +16,19 @@ func NewMetricsCollector(m *monitor.Monitor) *MetricsCollector {
 func (mc *MetricsCollector) Collect() map[string]interface{} {
 	metrics := make(map[string]interface{})
 
-	// Collect CPU usage
 	cpuUsage, err := mc.monitor.GetCPUUsage()
 	if err == nil {
 		metrics["cpu_usage"] = cpuUsage
 	}
 
-	// Collect Memory usage
 	memUsage, err := mc.monitor.GetMemoryUsage()
 	if err == nil {
 		metrics["memory_usage"] = memUsage
+	}
+
+	totalMem, err := mc.monitor.GetTotalMemory()
+	if err == nil {
+		metrics["total_memory"] = totalMem
 	}
 
 	return metrics

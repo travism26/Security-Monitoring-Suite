@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/shirou/gopsutil/mem"
 	"github.com/stretchr/testify/assert"
 	"github.com/travism26/system-monitoring-agent/internal/config"
 	"github.com/travism26/system-monitoring-agent/internal/exporter"
@@ -11,12 +12,37 @@ import (
 	"github.com/travism26/system-monitoring-agent/internal/monitor"
 )
 
+type MockCPU struct{}
+
+// Implement necessary methods for MockCPU to satisfy the interface
+// For example, if the interface has a method called GetUsage, implement it:
+func (m *MockCPU) GetUsage() float64 {
+	return 0.0 // Return a mock value
+}
+
+// Add the missing Percent method with the correct signature
+func (m *MockCPU) Percent(value float64, flag bool) ([]float64, error) {
+	return []float64{0.0}, nil // Return a mock value and nil error
+}
+
+type MockMem struct{}
+
+// Implement necessary methods for MockMem to satisfy the interface
+// For example, if the interface has a method called GetMemoryUsage, implement it:
+func (m *MockMem) GetMemoryUsage() float64 {
+	return 0.0 // Return a mock value
+}
+
+func (m *MockMem) VirtualMemory() (*mem.VirtualMemoryStat, error) {
+	return &mem.VirtualMemoryStat{}, nil
+}
+
 func TestNewAgent(t *testing.T) {
 	cfg := &config.Config{
 		LogFilePath: "./agent.log",
 		Interval:    60,
 	}
-	mon := monitor.NewMonitor()
+	mon := monitor.NewMonitor(new(MockCPU), new(MockMem))
 	mc := metrics.NewMetricsCollector(mon)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
@@ -34,7 +60,7 @@ func TestAgentStart(t *testing.T) {
 		LogFilePath: "./agent.log",
 		Interval:    1, // Set a short interval for testing
 	}
-	mon := monitor.NewMonitor()
+	mon := monitor.NewMonitor(new(MockCPU), new(MockMem))
 	mc := metrics.NewMetricsCollector(mon)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 

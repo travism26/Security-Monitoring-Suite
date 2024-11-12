@@ -1,6 +1,6 @@
 module github.com/travism26/system-monitoring-agent
 
-go 1.23.2
+go 1.22
 
 require (
 	github.com/shirou/gopsutil v3.21.11+incompatible

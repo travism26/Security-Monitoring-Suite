@@ -9,8 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/travism26/system-monitoring-agent/internal/agent"
 	"github.com/travism26/system-monitoring-agent/internal/config"
+
+	"github.com/travism26/system-monitoring-agent/internal/agent"
 	"github.com/travism26/system-monitoring-agent/internal/exporter"
 	"github.com/travism26/system-monitoring-agent/internal/logger"
 	"github.com/travism26/system-monitoring-agent/internal/metrics"
@@ -27,7 +28,10 @@ func main() {
 	}
 
 	// Initialize components
-	mon := monitor.NewMonitor()
+	mon, err := monitor.NewSystemMonitor()
+	if err != nil {
+		log.Fatalf("Error creating system monitor: %v", err)
+	}
 	mc := metrics.NewMetricsCollector(mon)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 

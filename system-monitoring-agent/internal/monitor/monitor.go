@@ -4,32 +4,49 @@ package monitor
 import (
 	"log"
 
-	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 )
 
-type Monitor struct{}
-
-func NewMonitor() *Monitor {
-	return &Monitor{}
+// CPU interface for mocking
+type CPU interface {
+	Percent(interval float64, percpu bool) ([]float64, error)
 }
 
+// Mem interface for mocking
+type Mem interface {
+	VirtualMemory() (*mem.VirtualMemoryStat, error)
+}
+
+// Monitor struct
+type Monitor struct {
+	cpu CPU
+	mem Mem
+}
+
+// NewMonitor creates a new Monitor
+func NewMonitor(cpu CPU, mem Mem) *Monitor {
+	return &Monitor{cpu: cpu, mem: mem}
+}
+
+// GetCPUUsage gets the CPU usage
 func (m *Monitor) GetCPUUsage() (float64, error) {
-	percent, err := cpu.Percent(0, false)
+	percentages, err := m.cpu.Percent(0, false)
 	if err != nil {
 		return 0, err
 	}
-	return percent[0], nil
+	return percentages[0], nil
 }
 
+// GetMemoryUsage gets the memory usage
 func (m *Monitor) GetMemoryUsage() (uint64, error) {
-	v, err := mem.VirtualMemory()
+	vmStat, err := m.mem.VirtualMemory()
 	if err != nil {
 		return 0, err
 	}
-	return v.Used, nil
+	return vmStat.Used, nil
 }
 
+// LogSystemMetrics logs the system metrics
 func (m *Monitor) LogSystemMetrics() {
 	cpuUsage, err := m.GetCPUUsage()
 	if err != nil {
