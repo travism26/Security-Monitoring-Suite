@@ -9,7 +9,6 @@ import (
 	"github.com/travism26/system-monitoring-agent/internal/config"
 	"github.com/travism26/system-monitoring-agent/internal/exporter"
 	"github.com/travism26/system-monitoring-agent/internal/metrics"
-	"github.com/travism26/system-monitoring-agent/internal/monitor"
 )
 
 type MockCPU struct{}
@@ -37,12 +36,34 @@ func (m *MockMem) VirtualMemory() (*mem.VirtualMemoryStat, error) {
 	return &mem.VirtualMemoryStat{}, nil
 }
 
+type MockMonitor struct{}
+
+func (m *MockMonitor) GetCPUUsage() (float64, error) {
+	return 0.0, nil
+}
+
+func (m *MockMonitor) Close() error {
+	return nil
+}
+
+func (m *MockMonitor) GetMemoryUsage() (uint64, error) {
+	return 0, nil
+}
+
+func (m *MockMonitor) GetTotalMemory() (uint64, error) {
+	return 0, nil
+}
+
+func (m *MockMonitor) Initialize() error {
+	return nil
+}
+
 func TestNewAgent(t *testing.T) {
 	cfg := &config.Config{
 		LogFilePath: "./agent.log",
 		Interval:    60,
 	}
-	mon := monitor.NewMonitor(new(MockCPU), new(MockMem))
+	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
@@ -60,7 +81,7 @@ func TestAgentStart(t *testing.T) {
 		LogFilePath: "./agent.log",
 		Interval:    1, // Set a short interval for testing
 	}
-	mon := monitor.NewMonitor(new(MockCPU), new(MockMem))
+	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
