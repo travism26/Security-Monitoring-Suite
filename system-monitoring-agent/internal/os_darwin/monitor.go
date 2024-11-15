@@ -1,10 +1,13 @@
 package os_darwin
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/net"
 	"github.com/travism26/system-monitoring-agent/internal/core"
 )
 
@@ -83,4 +86,49 @@ type DarwinMem struct{}
 
 func (m *DarwinMem) VirtualMemory() (*mem.VirtualMemoryStat, error) {
 	return mem.VirtualMemory()
+}
+
+// DarwinMonitor implements core.Monitor interface
+func (m *DarwinMonitor) GetDiskUsage() (core.DiskStats, error) {
+	_, err := disk.Partitions(false)
+	if err != nil {
+		return core.DiskStats{}, err
+	}
+
+	// Get root partition usage
+	usage, err := disk.Usage("/")
+	if err != nil {
+		return core.DiskStats{}, err
+	}
+
+	fmt.Println(usage)
+
+	return core.DiskStats{
+		Total: usage.Total,
+		Used:  usage.Used,
+		Free:  usage.Free,
+	}, nil
+}
+
+func (m *DarwinMonitor) GetNetworkStats() (core.NetworkStats, error) {
+	stats, err := net.IOCounters(false)
+	if err != nil {
+		return core.NetworkStats{}, err
+	}
+
+	if len(stats) == 0 {
+		return core.NetworkStats{}, fmt.Errorf("no network stats available")
+	}
+
+	// Aggregate all interfaces
+	var totalSent, totalReceived uint64
+	for _, stat := range stats {
+		totalSent += stat.BytesSent
+		totalReceived += stat.BytesRecv
+	}
+
+	return core.NetworkStats{
+		BytesSent:     totalSent,
+		BytesReceived: totalReceived,
+	}, nil
 }

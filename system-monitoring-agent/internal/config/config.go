@@ -8,8 +8,14 @@ import (
 )
 
 type Config struct {
-	LogFilePath string
-	Interval    int // Polling interval in seconds
+	LogFilePath string `yaml:"LogFilePath"`
+	Interval    int    `yaml:"Interval"` // Polling interval in seconds
+	Monitors    struct {
+		CPU     bool `yaml:"CPU"`
+		Memory  bool `yaml:"Memory"`
+		Disk    bool `yaml:"Disk"`
+		Network bool `yaml:"Network"`
+	} `yaml:"Monitors"`
 }
 
 func LoadConfig() (*Config, error) {
@@ -20,6 +26,10 @@ func LoadConfig() (*Config, error) {
 	// Set default values
 	viper.SetDefault("LogFilePath", "./agent.log")
 	viper.SetDefault("Interval", 60)
+	viper.SetDefault("Monitors.CPU", true)
+	viper.SetDefault("Monitors.Memory", true)
+	viper.SetDefault("Monitors.Disk", false)
+	viper.SetDefault("Monitors.Network", false)
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {

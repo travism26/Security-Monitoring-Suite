@@ -32,6 +32,14 @@ func NewWindowsMonitor() core.Monitor {
 	}
 }
 
+func (m *WindowsMonitor) GetDiskUsage() (core.DiskStats, error) {
+	return core.DiskStats{}, nil
+}
+
+func (m *WindowsMonitor) GetNetworkStats() (core.NetworkStats, error) {
+	return core.NetworkStats{}, nil
+}
+
 // GetCPUUsage implements core.Monitor interface
 func (m *WindowsMonitor) GetCPUUsage() (float64, error) {
 	percentages, err := m.cpu.Percent(0, false)

@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting Windows Monitoring Agent...")
+	fmt.Println("Starting System Monitoring Agent...")
 
 	// Load configuration
 	cfg, err := config.LoadConfig()
@@ -32,7 +32,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error creating system monitor: %v", err)
 	}
-	mc := metrics.NewMetricsCollector(mon)
+	mc := metrics.NewMetricsCollector(mon, cfg)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
 	ag := agent.NewAgent(cfg, mc, exp)

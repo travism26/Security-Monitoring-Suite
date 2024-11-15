@@ -7,6 +7,7 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"github.com/stretchr/testify/assert"
 	"github.com/travism26/system-monitoring-agent/internal/config"
+	"github.com/travism26/system-monitoring-agent/internal/core"
 	"github.com/travism26/system-monitoring-agent/internal/exporter"
 	"github.com/travism26/system-monitoring-agent/internal/metrics"
 )
@@ -23,6 +24,10 @@ func (m *MockCPU) GetUsage() float64 {
 func (m *MockCPU) Percent(value float64, flag bool) ([]float64, error) {
 	return []float64{0.0}, nil // Return a mock value and nil error
 }
+
+type MockDisk struct{}
+
+type MockNetwork struct{}
 
 type MockMem struct{}
 
@@ -58,13 +63,21 @@ func (m *MockMonitor) Initialize() error {
 	return nil
 }
 
+func (m *MockMonitor) GetDiskUsage() (core.DiskStats, error) {
+	return core.DiskStats{}, nil
+}
+
+func (m *MockMonitor) GetNetworkStats() (core.NetworkStats, error) {
+	return core.NetworkStats{}, nil
+}
+
 func TestNewAgent(t *testing.T) {
 	cfg := &config.Config{
 		LogFilePath: "./agent.log",
 		Interval:    60,
 	}
 	mon := &MockMonitor{}
-	mc := metrics.NewMetricsCollector(mon)
+	mc := metrics.NewMetricsCollector(mon, cfg)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
 	agent := NewAgent(cfg, mc, exp)
@@ -82,7 +95,7 @@ func TestAgentStart(t *testing.T) {
 		Interval:    1, // Set a short interval for testing
 	}
 	mon := &MockMonitor{}
-	mc := metrics.NewMetricsCollector(mon)
+	mc := metrics.NewMetricsCollector(mon, cfg)
 	exp := exporter.NewExporter(cfg.LogFilePath)
 
 	agent := NewAgent(cfg, mc, exp)
