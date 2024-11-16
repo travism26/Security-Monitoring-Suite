@@ -12,7 +12,7 @@ type Analyzer struct {
 func NewAnalyzer() *Analyzer {
 	return &Analyzer{
 		thresholds: map[string]float64{
-			"cpu_usage":    8.0,
+			"cpu_usage":    80.0,
 			"memory_usage": 85.0,
 			"disk_usage":   90.0,
 		},
