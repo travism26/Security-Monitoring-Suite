@@ -7,6 +7,7 @@ import (
 
 	"github.com/travism26/system-monitoring-agent/internal/config"
 	"github.com/travism26/system-monitoring-agent/internal/core"
+	"github.com/travism26/system-monitoring-agent/internal/threat"
 )
 
 type MetricsCollector struct {
@@ -14,6 +15,7 @@ type MetricsCollector struct {
 	config      *config.Config
 	lastNetwork map[string]core.NetworkStats
 	lastCheck   time.Time
+	analyzer    *threat.Analyzer
 }
 
 func NewMetricsCollector(m core.Monitor, cfg *config.Config) *MetricsCollector {
@@ -22,6 +24,7 @@ func NewMetricsCollector(m core.Monitor, cfg *config.Config) *MetricsCollector {
 		config:      cfg,
 		lastNetwork: make(map[string]core.NetworkStats),
 		lastCheck:   time.Now(),
+		analyzer:    threat.NewAnalyzer(),
 	}
 }
 
@@ -88,6 +91,14 @@ func (mc *MetricsCollector) Collect() map[string]interface{} {
 
 		metrics["network"] = networkMetrics
 		mc.lastNetwork[""] = netStats
+	}
+
+	// Analyze metrics for threats
+	if mc.analyzer != nil {
+		indicators := mc.analyzer.AnalyzeMetrics(metrics)
+		if len(indicators) > 0 {
+			metrics["threat_indicators"] = indicators
+		}
 	}
 
 	mc.lastCheck = now

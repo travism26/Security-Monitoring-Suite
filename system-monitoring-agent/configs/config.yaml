@@ -1,8 +1,15 @@
-# configs/config.yaml
 LogFilePath: "./agent.log"
-Interval: 10 # Polling interval in seconds
+Interval: 10
+Kafka:
+  Brokers:
+    - "localhost:9092"
+  Topic: "system-metrics"
 Monitors:
   CPU: true
   Memory: true
   Disk: true
   Network: true
+Thresholds:
+  CPU: 8
+  Memory: 85
+  Disk: 90
