@@ -74,6 +74,11 @@ array := [3]int(slice)             // slice to array => [1, 2, 3]
 slice2 := array[:]                 // array to slice => [1, 2, 3]
 strArray := []string(slice)        // slice to string array => ["1", "2", "3"]
 byteSlice2 := []byte(strArray)     // string array to byte slice => [49, 50, 51]
+
+// Array of strings to string
+strArray := []string{"1", "2", "3"}
+str := strings.Join(strArray, ",") // join string array => "1,2,3"
+byteSlice3 := []byte(str)          // string to byte slice => [49, 44, 50, 44, 51]
 ```
 
 ## Variables
