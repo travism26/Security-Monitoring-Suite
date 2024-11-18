@@ -47,6 +47,35 @@ func main() {
   - Pointers
   - Channels
 
+### Type Conversion
+
+```go
+// Basic type conversion
+i := 42
+f := float64(i)    // int to float64 => 42.00
+s := string(i)     // int to string (converts to ASCII/Unicode) => "42"
+b := byte(i)       // int to byte => 42
+
+// String conversions
+str := "123"
+num, err := strconv.Atoi(str)      // string to int => 123
+num64, err := strconv.ParseInt(str, 10, 64)  // string to int64 => 123
+f64, err := strconv.ParseFloat(str, 64)      // string to float64 => 123.00
+byteSlice := []byte(str)                     // string to byte slice => [49, 50, 51]
+
+// Converting back to string
+str = strconv.Itoa(num)            // int to string => "123"
+str = strconv.FormatInt(num64, 10) // int64 to string => "123"
+str = strconv.FormatFloat(f64, 'f', 2, 64)   // float64 to string => "123.00"
+
+// Array/Slice conversion
+slice := []int{1, 2, 3}
+array := [3]int(slice)             // slice to array => [1, 2, 3]
+slice2 := array[:]                 // array to slice => [1, 2, 3]
+strArray := []string(slice)        // slice to string array => ["1", "2", "3"]
+byteSlice2 := []byte(strArray)     // string array to byte slice => [49, 50, 51]
+```
+
 ## Variables
 
 ### Declaration
