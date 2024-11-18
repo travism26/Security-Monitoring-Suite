@@ -4,8 +4,8 @@ Kafka:
   Brokers:
     - "localhost:9092"
   Topic: "system-metrics"
-  HTTP:
-    Endpoint: "http://your-api-gateway:8080/metrics"
+HTTP:
+  Endpoint: "" # Leave blank to disable HTTP exporter
 Monitors:
   CPU: true
   Memory: true

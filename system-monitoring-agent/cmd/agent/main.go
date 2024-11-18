@@ -37,7 +37,11 @@ func main() {
 	// Initialize exporters (file and http)
 	exporters := []exporter.Exporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
-		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+	}
+
+	// Only add HTTP exporter if endpoint is configured
+	if cfg.HTTP.Endpoint != "" {
+		exporters = append(exporters, exporter.NewHTTPExporter(cfg.HTTP.Endpoint))
 	}
 
 	// Initialize agent with exporters

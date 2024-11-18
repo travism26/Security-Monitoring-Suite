@@ -20,7 +20,7 @@ type Config struct {
 }
 
 type HTTPConfig struct {
-	Endpoint string
+	Endpoint string `yaml:"Endpoint"`
 }
 
 func LoadConfig() (*Config, error) {
