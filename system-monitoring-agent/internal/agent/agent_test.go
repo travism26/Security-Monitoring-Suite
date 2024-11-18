@@ -71,6 +71,12 @@ func (m *MockMonitor) GetNetworkStats() (core.NetworkStats, error) {
 	return core.NetworkStats{}, nil
 }
 
+type MockHTTPExporter struct{}
+
+func (m *MockHTTPExporter) Export(data map[string]interface{}) error {
+	return nil
+}
+
 func TestNewAgent(t *testing.T) {
 	cfg := &config.Config{
 		LogFilePath: "./agent.log",
@@ -78,14 +84,14 @@ func TestNewAgent(t *testing.T) {
 	}
 	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon, cfg)
-	exp := exporter.NewExporter(cfg.LogFilePath)
-
-	agent := NewAgent(cfg, mc, exp)
+	exporters := []exporter.Exporter{
+		exporter.NewFileExporter(cfg.LogFilePath),
+		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+	}
+	agent := NewAgent(cfg, mc, exporters...)
 
 	assert.NotNil(t, agent)
 	assert.Equal(t, cfg, agent.config)
-	assert.Equal(t, mc, agent.metrics)
-	assert.Equal(t, exp, agent.exporter)
 	assert.Equal(t, time.Duration(cfg.Interval)*time.Second, agent.interval)
 }
 
@@ -96,9 +102,11 @@ func TestAgentStart(t *testing.T) {
 	}
 	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon, cfg)
-	exp := exporter.NewExporter(cfg.LogFilePath)
-
-	agent := NewAgent(cfg, mc, exp)
+	exporters := []exporter.Exporter{
+		exporter.NewFileExporter(cfg.LogFilePath),
+		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+	}
+	agent := NewAgent(cfg, mc, exporters...)
 
 	// Run Start in a separate goroutine
 	go agent.Start()

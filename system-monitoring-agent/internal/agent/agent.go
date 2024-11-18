@@ -11,18 +11,18 @@ import (
 )
 
 type Agent struct {
-	config   *config.Config
-	metrics  *metrics.MetricsCollector
-	exporter *exporter.Exporter
-	interval time.Duration
+	config    *config.Config
+	metrics   *metrics.MetricsCollector
+	exporters []exporter.Exporter
+	interval  time.Duration
 }
 
-func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exp *exporter.Exporter) *Agent {
+func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exporter.Exporter) *Agent {
 	return &Agent{
-		config:   cfg,
-		metrics:  mc,
-		exporter: exp,
-		interval: time.Duration(cfg.Interval) * time.Second,
+		config:    cfg,
+		metrics:   mc,
+		exporters: exporters,
+		interval:  time.Duration(cfg.Interval) * time.Second,
 	}
 }
 
@@ -33,8 +33,10 @@ func (a *Agent) Start() {
 	for {
 		<-ticker.C
 		data := a.metrics.Collect()
-		if err := a.exporter.Export(data); err != nil {
-			log.Printf("Error exporting metrics: %v", err)
+		for _, exp := range a.exporters {
+			if err := exp.Export(data); err != nil {
+				log.Printf("Error exporting metrics: %v", err)
+			}
 		}
 	}
 }

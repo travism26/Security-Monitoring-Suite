@@ -16,6 +16,11 @@ type Config struct {
 		Disk    bool `yaml:"Disk"`
 		Network bool `yaml:"Network"`
 	} `yaml:"Monitors"`
+	HTTP HTTPConfig
+}
+
+type HTTPConfig struct {
+	Endpoint string
 }
 
 func LoadConfig() (*Config, error) {

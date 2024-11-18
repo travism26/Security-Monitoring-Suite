@@ -13,6 +13,30 @@ A cross-platform system monitoring agent built in Go that collects and logs deta
 - Configurable monitoring intervals
 - Cross-platform support (macOS, Windows)
 
+# Design Ideas
+
+## Architecture
+
+This is a high-level architecture diagram of the system monitoring agent.
+
+Monitoring Agent is a lightweight, cross-platform application that collects system metrics and logs them to a file. I will be deploying all my other applications on Kubernetes, so I want to keep this lightweight and easy to deploy.
+
+```plaintext
+Architecture:
+
+IOT Device/Endpoint                  Kubernetes Cluster
++---------------+                    +----------------------------------------+
+|               |                    |  +-----------+         +-----------+   |
+| Monitoring    |  HTTPS POST/PUT    |  |           |  Kafka  |           |   |
+| Agent         | -----------------> |  |   API     | ------> |  Kafka    |   |
+|               |                    |  |  Gateway  |         | Cluster   |   |
++---------------+                    |  |           |         |           |   |
+                                     |  +-----------+         +-----------+   |
+                                     |        ↑                               |
+                                     |        | Horizontal Pod Autoscaling    |
+                                     +----------------------------------------+
+```
+
 ## Prerequisites
 
 - Go 1.22 or higher

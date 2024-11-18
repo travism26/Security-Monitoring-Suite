@@ -1,4 +1,4 @@
-// internal/exporter/exporter.go
+// internal/exporter/file.go
 package exporter
 
 import (
@@ -7,15 +7,15 @@ import (
 	"os"
 )
 
-type Exporter struct {
+type FileExporter struct {
 	outputFilePath string
 }
 
-func NewExporter(outputFilePath string) *Exporter {
-	return &Exporter{outputFilePath: outputFilePath}
+func NewFileExporter(outputFilePath string) *FileExporter {
+	return &FileExporter{outputFilePath: outputFilePath}
 }
 
-func (e *Exporter) Export(data map[string]interface{}) error {
+func (e *FileExporter) Export(data map[string]interface{}) error {
 	file, err := os.OpenFile(e.outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
@@ -33,5 +33,9 @@ func (e *Exporter) Export(data map[string]interface{}) error {
 	}
 
 	log.Println("Metrics exported successfully.")
+	return nil
+}
+
+func (e *FileExporter) Close() error {
 	return nil
 }

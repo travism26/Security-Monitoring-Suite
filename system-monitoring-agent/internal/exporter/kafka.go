@@ -6,11 +6,16 @@ import (
 	"github.com/IBM/sarama"
 )
 
+// KafkaExporter handles the export of monitoring data to Kafka topics
 type KafkaExporter struct {
 	producer sarama.SyncProducer
 	topic    string
 }
 
+// NewKafkaExporter creates a new Kafka exporter instance
+// brokers is a list of Kafka broker addresses
+// topic is the Kafka topic to publish messages to
+// Returns the new exporter and any error encountered during setup
 func NewKafkaExporter(brokers []string, topic string) (*KafkaExporter, error) {
 	config := sarama.NewConfig()
 	config.Producer.RequiredAcks = sarama.WaitForAll
@@ -28,6 +33,9 @@ func NewKafkaExporter(brokers []string, topic string) (*KafkaExporter, error) {
 	}, nil
 }
 
+// Export sends the provided data to Kafka as a JSON message
+// data is a map of values to be exported
+// Returns an error if marshaling or sending fails
 func (k *KafkaExporter) Export(data map[string]interface{}) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
@@ -43,6 +51,8 @@ func (k *KafkaExporter) Export(data map[string]interface{}) error {
 	return err
 }
 
+// Close cleanly shuts down the Kafka producer
+// Returns any error encountered during shutdown
 func (k *KafkaExporter) Close() error {
 	return k.producer.Close()
 }

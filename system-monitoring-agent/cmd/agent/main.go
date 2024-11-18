@@ -33,9 +33,15 @@ func main() {
 		log.Fatalf("Error creating system monitor: %v", err)
 	}
 	mc := metrics.NewMetricsCollector(mon, cfg)
-	exp := exporter.NewExporter(cfg.LogFilePath)
 
-	ag := agent.NewAgent(cfg, mc, exp)
+	// Initialize exporters (file and http)
+	exporters := []exporter.Exporter{
+		exporter.NewFileExporter(cfg.LogFilePath),
+		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+	}
+
+	// Initialize agent with exporters
+	ag := agent.NewAgent(cfg, mc, exporters...)
 
 	// Handle termination signal
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
