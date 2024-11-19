@@ -87,28 +87,40 @@ go build -o monitoring-agent ./cmd/agent/main.go
 
 ```json
 {
-  "timestamp": 1731674033,
-  "timestamp_utc": "2024-11-15T12:33:53Z",
+  "timestamp": 1731791114,
+  "timestamp_utc": "2024-11-16T21:05:14Z",
   "host_info": {
     "os": "darwin",
     "arch": "arm64"
   },
-  "cpu_usage": 6.48,
-  "memory_usage": 10760388608,
-  "memory_usage_percent": 55.67,
+  "cpu_usage": 9.37,
+  "memory_usage": 11153670144,
+  "memory_usage_percent": 57.71,
   "total_memory": 19327352832,
   "disk": {
-    "free": 285302497280,
+    "free": 286532517888,
     "total": 494384795648,
-    "usage_percent": 42.29,
-    "used": 209082298368
+    "usage_percent": 42.04,
+    "used": 207852277760
   },
   "network": {
-    "bytes_received": 57124138206,
-    "bytes_received_per_second": 58175.49,
-    "bytes_sent": 17783935852,
-    "bytes_sent_per_second": 1906.8
-  }
+    "bytes_received": 59426561897,
+    "bytes_received_per_second": 352.5,
+    "bytes_sent": 18850020613,
+    "bytes_sent_per_second": 2274.89
+  },
+  "threat_indicators": [
+    {
+      "type": "high_cpu_usage",
+      "description": "CPU usage exceeds threshold",
+      "severity": "low",
+      "score": 11.25,
+      "timestamp": "2024-11-16T17:05:14.579362-04:00",
+      "metadata": {
+        "tags": ["performance", "resource_usage"]
+      }
+    }
+  ]
 }
 ```
 
