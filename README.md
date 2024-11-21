@@ -1,17 +1,55 @@
-# CyberSecurity-Toolset (Work In Progress)
+# CyberSecurity-Toolset
 
-A comprehensive suite of security and monitoring tools designed to enhance system performance monitoring, security threat detection, and network analysis capabilities. This repository contains a collection of projects aimed at providing robust security insights and actionable monitoring for various environments, focusing on Windows and Go-based solutions.
+A comprehensive suite of security and monitoring tools designed to enhance system performance monitoring, security threat detection, and network analysis capabilities. This repository contains a collection of projects aimed at providing robust security insights and actionable monitoring for various environments, focusing on Windows, macOS systems, and Go-based solutions.
 
-# Project Overview
+## Project Status: 🚧 Work In Progress
 
-The CyberSecurity-Toolset repository includes a range of tools to support system administrators, security analysts, and developers in monitoring and securing systems effectively. Each sub-folder represents a unique project with its own README, instructions, and usage guidelines.
+Current Progress:
 
-## Current Sub-Projects:
+- 🏗️ [System Monitoring Agent](./system-monitoring-agent/): In development
+- 📝 Threat Detection Simulation: Planning phase
+- 📝 Log Aggregator: Planning phase
+- 📝 Mini XDR System: Planning phase
+- 📝 Network Protocol Analyzer: Planning phase
 
-I plan on building the following applications in golang, this will be kind of a side project to learn more about windows security and how to interact with the Windows API.
+## Project Overview
 
-1. Windows Monitoring Agent: A lightweight Windows agent built in Go for real-time monitoring of system performance.
-2. Threat Detection Simulation: Simulates common security threats to test detection mechanisms.
-3. Log Aggregator with SIEM-Like Features: Aggregates and analyzes logs from multiple sources for anomaly detection.
-4. Mini XDR System: Correlates events from various sources to detect and respond to security incidents.
-5. Network Protocol Analyzer: Monitors and analyzes network traffic to detect suspicious activities.
+The CyberSecurity-Toolset repository is being developed as an integrated security suite, with each component designed to work both independently and as part of the larger ecosystem. Each sub-folder represents a unique project with its own README, instructions, and usage guidelines.
+
+## Components:
+
+1. **System Monitoring Agent** (In Development)
+   - Lightweight Go agent for real-time system performance monitoring
+   - Cross-platform support (Windows, macOS)
+   - Kubernetes-ready deployment options
+2. **Threat Detection Simulation** (Planning Phase)
+
+   - Simulates common security threats
+   - Tests detection mechanisms
+   - Integrates with Monitoring Agent data
+
+3. **Log Aggregator with SIEM-Like Features** (Planning Phase)
+
+   - Centralizes logs from multiple sources
+   - Implements anomaly detection
+   - Provides SIEM-like analysis capabilities
+
+4. **Mini XDR System** (Planning Phase)
+
+   - Correlates events across components
+   - Automated incident response
+   - Threat intelligence integration
+
+5. **Network Protocol Analyzer** (Planning Phase)
+   - Deep packet inspection
+   - Traffic pattern analysis
+   - Suspicious activity detection
+
+## Development Goals
+
+This project serves as both a practical security toolkit and a learning journey into:
+
+- Windows API integration
+- Golang system programming
+- Security tool development
+- Kubernetes-based deployment architectures
