@@ -1,0 +1,120 @@
+apiVersion: kafka.strimzi.io/v1beta2
+kind: Kafka
+metadata:
+  name: systems-kafka-cluster
+  namespace: default # Ensure the namespace is correct
+  annotations:
+    environment: "development-only"
+    security-warning: "Contains unsecured plain listener - not for production use"
+spec:
+  kafka:
+    version: 3.7.0
+    replicas: 3
+    listeners:
+      - name: plain
+        port: 9092
+        type: internal
+        tls: false
+      - name: tls
+        port: 9093
+        type: internal
+        tls: true
+        authentication:
+          type: scram-sha-512
+    config:
+      offsets.topic.replication.factor: 3
+      transaction.state.log.replication.factor: 3
+      transaction.state.log.min.isr: 2
+      default.replication.factor: 3
+      min.insync.replicas: 2
+      ssl.client.auth: required
+      authorizer.class.name: kafka.security.authorizer.AclAuthorizer
+      super.users: "User:CN=strimzi-cluster-operator"
+      log.retention.hours: 168
+      security.protocol: SSL
+    storage:
+      type: jbod
+      volumes:
+        - id: 0
+          type: persistent-claim
+          size: 10Gi
+          deleteClaim: false
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "1"
+      limits:
+        memory: "4Gi"
+        cpu: "2"
+  zookeeper:
+    replicas: 3
+    storage:
+      type: persistent-claim
+      size: 1Gi
+      deleteClaim: false
+  entityOperator:
+    topicOperator: {}
+    userOperator: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-metrics
+  namespace: default # Ensure the namespace is correct
+  labels:
+    app: strimzi
+data:
+  kafka-metrics-config.yml: |
+    lowercaseOutputName: true
+    rules:
+    - pattern: kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+      name: kafka_server_$1_$2
+      type: GAUGE
+      labels:
+       clientId: "$3"
+       topic: "$4"
+       partition: "$5"
+  zookeeper-metrics-config.yml: |
+    lowercaseOutputName: true
+    rules:
+    - pattern: "org.apache.ZooKeeperService<name0=ReplicatedServer_id(\\d+)><>(\\w+)"
+      name: "zookeeper_$2"
+      type: GAUGE
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaUser
+metadata:
+  name: security-monitor-user
+  namespace: default # Ensure the namespace is correct
+  labels:
+    strimzi.io/cluster: systems-kafka-cluster
+spec:
+  authentication:
+    type: scram-sha-512
+  authorization:
+    type: simple
+    acls:
+      - resource:
+          type: topic
+          name: security-alerts
+          patternType: literal
+        operations:
+          - All
+        host: "*"
+      - resource:
+          type: topic
+          name: system-logs
+          patternType: literal
+        operations:
+          - All
+        host: "*"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: my-kafka-user-secret
+  namespace: default
+type: Opaque
+data:
+  username: bXktdXNlcm5hbWU=
+  password: bXktcGFzc3dvcmQ=
