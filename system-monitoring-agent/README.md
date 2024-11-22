@@ -120,7 +120,29 @@ go build -o monitoring-agent ./cmd/agent/main.go
         "tags": ["performance", "resource_usage"]
       }
     }
-  ]
+  ],
+  "processes": {
+    "process_list": [
+      {
+        "cpu_percent": 0.5087533993160189,
+        "memory_usage": 26148864,
+        "name": "launchd",
+        "pid": 1,
+        "status": "S"
+      },
+      {
+        "cpu_percent": 0.2202767781072918,
+        "memory_usage": 67502080,
+        "name": "logd",
+        "pid": 510,
+        "status": "S"
+      }
+      // ... Truncated for brevity
+    ],
+    "total_count": 589,
+    "total_cpu_percent": 79.00824584831197,
+    "total_memory_usage": 16922177536
+  }
 }
 ```
 
