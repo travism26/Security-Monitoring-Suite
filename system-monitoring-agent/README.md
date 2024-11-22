@@ -156,13 +156,13 @@ cat agent.log
 
 This project is currently under active development. Upcoming features:
 
-- [ ] Support for Linux systems
-- [ ] Process monitoring
+- [x] Process monitoring (Completed 2024-11-22)
+- [ ] Push payloads to API Gateway (http / rest) which will be sent to Kafka
 - [ ] System temperature monitoring
-- [ ] Alert configurations
-- [ ] Web interface for metrics visualization
-- [ ] Prometheus metrics endpoint
+- [ ] Alert configurations (Maybe not this should be collection only alerts will be in SIEM / XDR side)
+- [ ] Web interface for metrics visualization (MAYBE NOT KEEP THIS APP SMALL)
 - [ ] Docker containerization
+- [ ] Support for Linux systems
 
 ## Contributing
 

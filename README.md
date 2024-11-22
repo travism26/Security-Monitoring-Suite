@@ -19,9 +19,11 @@ The CyberSecurity-Toolset repository is being developed as an integrated securit
 ## Components:
 
 1. **System Monitoring Agent** (In Development)
+
    - Lightweight Go agent for real-time system performance monitoring
    - Cross-platform support (Windows, macOS)
    - Kubernetes-ready deployment options
+
 2. **Threat Detection Simulation** (Planning Phase)
 
    - Simulates common security threats
@@ -41,6 +43,7 @@ The CyberSecurity-Toolset repository is being developed as an integrated securit
    - Threat intelligence integration
 
 5. **Network Protocol Analyzer** (Planning Phase)
+
    - Deep packet inspection
    - Traffic pattern analysis
    - Suspicious activity detection
