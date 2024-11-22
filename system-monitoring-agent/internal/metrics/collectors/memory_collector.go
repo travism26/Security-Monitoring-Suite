@@ -4,10 +4,10 @@ package collectors
 import "github.com/travism26/system-monitoring-agent/internal/core"
 
 type MemoryCollector struct {
-	monitor core.Monitor
+	monitor core.MemoryMonitor
 }
 
-func NewMemoryCollector(monitor core.Monitor) *MemoryCollector {
+func NewMemoryCollector(monitor core.MemoryMonitor) *MemoryCollector {
 	return &MemoryCollector{monitor: monitor}
 }
 

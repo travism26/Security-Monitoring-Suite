@@ -71,6 +71,10 @@ func (m *MockMonitor) GetNetworkStats() (core.NetworkStats, error) {
 	return core.NetworkStats{}, nil
 }
 
+func (m *MockMonitor) GetProcesses() ([]core.ProcessInfo, error) {
+	return []core.ProcessInfo{}, nil
+}
+
 type MockHTTPExporter struct{}
 
 func (m *MockHTTPExporter) Export(data map[string]interface{}) error {

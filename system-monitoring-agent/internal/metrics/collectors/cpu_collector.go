@@ -4,10 +4,10 @@ package collectors
 import "github.com/travism26/system-monitoring-agent/internal/core"
 
 type CPUCollector struct {
-	monitor core.Monitor
+	monitor core.CPUMonitor
 }
 
-func NewCPUCollector(monitor core.Monitor) *CPUCollector {
+func NewCPUCollector(monitor core.CPUMonitor) *CPUCollector {
 	return &CPUCollector{monitor: monitor}
 }
 

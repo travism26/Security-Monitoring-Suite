@@ -8,13 +8,15 @@ import (
 	"github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 	"github.com/travism26/system-monitoring-agent/internal/core"
 )
 
 // DarwinMonitor implements the core.Monitor interface
 type DarwinMonitor struct {
-	cpu CPU
-	mem Mem
+	cpu  CPU
+	mem  Mem
+	proc Process
 }
 
 // CPU interface (same as in monitor.go)
@@ -27,11 +29,17 @@ type Mem interface {
 	VirtualMemory() (*mem.VirtualMemoryStat, error)
 }
 
+// Process interface
+type Process interface {
+	Processes() ([]*process.Process, error)
+}
+
 // NewDarwinMonitor creates a new DarwinMonitor instance
-func NewDarwinMonitor() core.Monitor {
+func NewDarwinMonitor() core.SystemMonitor {
 	return &DarwinMonitor{
-		cpu: &DarwinCPU{},
-		mem: &DarwinMem{},
+		cpu:  &DarwinCPU{},
+		mem:  &DarwinMem{},
+		proc: &DarwinProcess{},
 	}
 }
 
@@ -131,4 +139,53 @@ func (m *DarwinMonitor) GetNetworkStats() (core.NetworkStats, error) {
 		BytesSent:     totalSent,
 		BytesReceived: totalReceived,
 	}, nil
+}
+
+// DarwinProcess implements Process interface
+type DarwinProcess struct{}
+
+func (p *DarwinProcess) Processes() ([]*process.Process, error) {
+	return process.Processes()
+}
+
+// Implement GetProcesses method
+func (m *DarwinMonitor) GetProcesses() ([]core.ProcessInfo, error) {
+	processes, err := m.proc.Processes()
+	if err != nil {
+		return nil, err
+	}
+
+	var processInfos []core.ProcessInfo
+	for _, p := range processes {
+		pid := p.Pid
+		name, err := p.Name()
+		if err != nil {
+			continue
+		}
+
+		cpuPercent, err := p.CPUPercent()
+		if err != nil {
+			cpuPercent = 0
+		}
+
+		memInfo, err := p.MemoryInfo()
+		if err != nil {
+			continue
+		}
+
+		status, err := p.Status()
+		if err != nil {
+			status = "unknown"
+		}
+
+		processInfos = append(processInfos, core.ProcessInfo{
+			PID:         int(pid),
+			Name:        name,
+			CPUPercent:  cpuPercent,
+			MemoryUsage: memInfo.RSS,
+			Status:      status,
+		})
+	}
+
+	return processInfos, nil
 }

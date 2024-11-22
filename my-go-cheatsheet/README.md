@@ -191,11 +191,215 @@ func (p Person) Greet() string {
 }
 ```
 
-### Interface
+### Basic Interface
 
 ```go
+// Simple interface definition
+type Writer interface {
+    Write([]byte) (int, error)
+}
+
+// Interface with multiple methods
+type ReadWriter interface {
+    Read([]byte) (int, error)
+    Write([]byte) (int, error)
+}
+```
+
+### Interface Composition
+
+```go
+// Interfaces can be composed of other interfaces
+type ReadWriter interface {
+    Reader
+    Writer
+}
+
+// Real-world example
+type SystemMonitor interface {
+    CPUMonitor
+    MemoryMonitor
+    DiskMonitor
+}
+```
+
+### Interface Implementation
+
+```go
+// Interface
 type Animal interface {
     Speak() string
+}
+
+// Implicit implementation
+type Dog struct {
+    Name string
+}
+
+// Dog implements Animal interface implicitly without declaring it unlike java
+func (d Dog) Speak() string {
+    return fmt.Sprintf("%s says Woof!", d.Name)
+}
+
+// Usage
+func main() {
+    var animal Animal = Dog{Name: "Rex"}
+    fmt.Println(animal.Speak())  // Output: Rex says Woof!
+}
+```
+
+### Interface Composition with Structs
+
+```go
+// Interfaces
+type Logger interface {
+    Log(string)
+}
+
+type Processor interface {
+    Process() error
+}
+
+// Implementation using composition
+type Worker struct {
+    logger    Logger    // Composition through embedding
+    processor Processor
+}
+
+// Constructor pattern
+func NewWorker(l Logger, p Processor) *Worker {
+    return &Worker{
+        logger:    l,
+        processor: p,
+    }
+}
+
+// Methods using composed interfaces
+func (w *Worker) DoWork() error {
+    w.logger.Log("Starting work")
+    return w.processor.Process()
+}
+```
+
+### Empty Interface
+
+```go
+// Empty interface can hold any type
+var i interface{}
+i = 42          // holds an int
+i = "hello"     // holds a string
+i = struct{}{}  // holds a struct
+
+// Type assertion
+str, ok := i.(string)
+if ok {
+    fmt.Printf("Value is a string: %s\n", str)
+}
+
+// Type switch
+switch v := i.(type) {
+case int:
+    fmt.Printf("Integer: %d\n", v)
+case string:
+    fmt.Printf("String: %s\n", v)
+default:
+    fmt.Printf("Unknown type\n")
+}
+```
+
+### Interface Best Practices
+
+```go
+// Good: Small, focused interfaces
+type Reader interface {
+    Read(p []byte) (n int, err error)
+}
+
+// Good: Interface segregation
+type FileHandler interface {
+    Open() error
+    Close() error
+}
+
+type FileReader interface {
+    FileHandler
+    Reader
+}
+
+// Bad: Large, monolithic interface
+type DoEverything interface {
+    DoThis() error
+    DoThat() error
+    DoSomethingElse() error
+    // ... many more methods
+}
+```
+
+### Common Design Patterns with Interfaces
+
+```go
+// Factory Pattern
+type Logger interface {
+    Log(string)
+}
+
+func NewLogger(logType string) Logger {
+    switch logType {
+    case "file":
+        return &FileLogger{}
+    case "console":
+        return &ConsoleLogger{}
+    default:
+        return &NullLogger{}
+    }
+}
+
+// Strategy Pattern
+type SortStrategy interface {
+    Sort([]int)
+}
+
+type Sorter struct {
+    strategy SortStrategy
+}
+
+func (s *Sorter) SetStrategy(strategy SortStrategy) {
+    s.strategy = strategy
+}
+
+func (s *Sorter) Sort(data []int) {
+    s.strategy.Sort(data)
+}
+```
+
+### Testing with Interfaces
+
+```go
+// Interface for testing
+type DataStore interface {
+    Save(data []byte) error
+    Load() ([]byte, error)
+}
+
+// Mock implementation for testing
+type MockDataStore struct {
+    data []byte
+    err  error
+}
+
+func (m *MockDataStore) Save(data []byte) error {
+    if m.err != nil {
+        return m.err
+    }
+    m.data = data
+    return nil
+}
+
+// Test using mock
+func TestDataProcessor(t *testing.T) {
+    mock := &MockDataStore{}
+    processor := NewDataProcessor(mock)
+    // ... test implementation
 }
 ```
 

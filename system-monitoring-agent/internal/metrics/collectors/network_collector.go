@@ -4,10 +4,10 @@ package collectors
 import "github.com/travism26/system-monitoring-agent/internal/core"
 
 type NetworkCollector struct {
-	monitor core.Monitor
+	monitor core.NetworkMonitor
 }
 
-func NewNetworkCollector(monitor core.Monitor) *NetworkCollector {
+func NewNetworkCollector(monitor core.NetworkMonitor) *NetworkCollector {
 	return &NetworkCollector{monitor: monitor}
 }
 

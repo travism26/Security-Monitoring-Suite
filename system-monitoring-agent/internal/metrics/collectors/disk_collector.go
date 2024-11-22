@@ -4,10 +4,10 @@ package collectors
 import "github.com/travism26/system-monitoring-agent/internal/core"
 
 type DiskCollector struct {
-	monitor core.Monitor
+	monitor core.DiskMonitor
 }
 
-func NewDiskCollector(monitor core.Monitor) *DiskCollector {
+func NewDiskCollector(monitor core.DiskMonitor) *DiskCollector {
 	return &DiskCollector{monitor: monitor}
 }
 

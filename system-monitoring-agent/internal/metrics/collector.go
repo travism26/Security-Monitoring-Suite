@@ -19,12 +19,13 @@ type MetricsCollector struct {
 	analyzer    *threat.Analyzer
 }
 
-func NewMetricsCollector(m core.Monitor, cfg *config.Config) *MetricsCollector {
+func NewMetricsCollector(monitor core.SystemMonitor, cfg *config.Config) *MetricsCollector {
 	collectors := []MetricCollector{
-		collectors.NewCPUCollector(m),
-		collectors.NewMemoryCollector(m),
-		collectors.NewDiskCollector(m),
-		collectors.NewNetworkCollector(m),
+		collectors.NewCPUCollector(monitor),
+		collectors.NewMemoryCollector(monitor),
+		collectors.NewDiskCollector(monitor),
+		collectors.NewNetworkCollector(monitor),
+		collectors.NewProcessCollector(monitor),
 	}
 
 	return &MetricsCollector{

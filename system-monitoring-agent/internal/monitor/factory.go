@@ -10,7 +10,7 @@ import (
 	"github.com/travism26/system-monitoring-agent/internal/core"
 )
 
-func NewSystemMonitor() (core.Monitor, error) {
+func NewSystemMonitor() (core.SystemMonitor, error) {
 	switch runtime.GOOS {
 	case "darwin":
 		return os_darwin.NewDarwinMonitor(), nil
