@@ -6,6 +6,10 @@ import (
 	"github.com/IBM/sarama"
 )
 
+// mtravis notes: I dont think we need this I dont plan on directly connecting to kafka
+// I plan on sending data to a endpoint that is connected to kafka and then passing it to kafka
+// I will keep this for now but we may want to remove it...
+
 // KafkaExporter handles the export of monitoring data to Kafka topics
 type KafkaExporter struct {
 	producer sarama.SyncProducer
