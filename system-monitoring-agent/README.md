@@ -157,7 +157,7 @@ cat agent.log
 This project is currently under active development. Upcoming features:
 
 - [x] Process monitoring (Completed 2024-11-22)
-- [ ] Push payloads to API Gateway (http / rest) which will be sent to Kafka
+- [x] Push payloads to API Gateway (http / rest) which will be sent to Kafka ( I think its working lol )
 - [ ] System temperature monitoring
 - [ ] Alert configurations (Maybe not this should be collection only alerts will be in SIEM / XDR side)
 - [ ] Web interface for metrics visualization (MAYBE NOT KEEP THIS APP SMALL)
