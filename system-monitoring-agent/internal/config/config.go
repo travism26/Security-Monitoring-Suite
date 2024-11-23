@@ -16,7 +16,8 @@ type Config struct {
 		Disk    bool `yaml:"Disk"`
 		Network bool `yaml:"Network"`
 	} `yaml:"Monitors"`
-	HTTP HTTPConfig
+	HTTP       HTTPConfig
+	StorageDir string `yaml:"StorageDir"`
 }
 
 type HTTPConfig struct {
@@ -35,6 +36,7 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("Monitors.Memory", true)
 	viper.SetDefault("Monitors.Disk", false)
 	viper.SetDefault("Monitors.Network", false)
+	viper.SetDefault("StorageDir", "./metrics_data")
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {

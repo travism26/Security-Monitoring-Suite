@@ -10,7 +10,10 @@ import (
 func TestNewHTTPExporter(t *testing.T) {
 	// Test case 1: with endpoint
 	endpoint := "http://example.com"
-	exporter := NewHTTPExporter(endpoint)
+	exporter, err := NewHTTPExporter(endpoint, nil)
+	if err != nil {
+		t.Fatalf("Failed to create exporter: %v", err)
+	}
 
 	if !exporter.enabled {
 		t.Error("Expected exporter to be enabled with endpoint")
@@ -20,7 +23,7 @@ func TestNewHTTPExporter(t *testing.T) {
 	}
 
 	// Test case 2: without endpoint (disabled)
-	disabledExporter := NewHTTPExporter("")
+	disabledExporter, _ := NewHTTPExporter("", nil)
 	if disabledExporter.enabled {
 		t.Error("Expected exporter to be disabled without endpoint")
 	}
@@ -61,7 +64,10 @@ func TestHTTPExporter_Export(t *testing.T) {
 	t.Log("🌐 Test server started at:", server.URL)
 
 	// Create exporter with test server URL
-	exporter := NewHTTPExporter(server.URL)
+	exporter, err := NewHTTPExporter(server.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create exporter: %v", err)
+	}
 
 	// Prepare test data
 	testData := map[string]interface{}{
@@ -71,7 +77,7 @@ func TestHTTPExporter_Export(t *testing.T) {
 	t.Log("📤 Sending test data:", testData)
 
 	// Test export
-	err := exporter.Export(testData)
+	err = exporter.Export(testData)
 	if err != nil {
 		t.Fatalf("Export failed: %v", err)
 	}
@@ -104,19 +110,25 @@ func TestHTTPExporter_ExportError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	exporter := NewHTTPExporter(server.URL)
+	exporter, err := NewHTTPExporter(server.URL, nil)
+	if err != nil {
+		t.Fatalf("Failed to create exporter: %v", err)
+	}
 	testData := map[string]interface{}{"test": "data"}
 
 	// Test export with error response
-	err := exporter.Export(testData)
+	err = exporter.Export(testData)
 	if err != nil { // Note: Our implementation logs errors but returns nil
 		t.Errorf("Expected nil error on HTTP failure, got: %v", err)
 	}
 }
 
 func TestHTTPExporter_Close(t *testing.T) {
-	exporter := NewHTTPExporter("http://example.com")
-	err := exporter.Close()
+	exporter, err := NewHTTPExporter("http://example.com", nil)
+	if err != nil {
+		t.Fatalf("Failed to create exporter: %v", err)
+	}
+	err = exporter.Close()
 	if err != nil {
 		t.Errorf("Close() returned error: %v", err)
 	}

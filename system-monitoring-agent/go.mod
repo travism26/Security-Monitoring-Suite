@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/IBM/sarama v1.43.3
+	github.com/mattn/go-sqlite3 v1.14.24
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0

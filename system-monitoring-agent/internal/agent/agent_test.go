@@ -81,6 +81,10 @@ func (m *MockHTTPExporter) Export(data map[string]interface{}) error {
 	return nil
 }
 
+func (m *MockHTTPExporter) Close() error {
+	return nil
+}
+
 func TestNewAgent(t *testing.T) {
 	cfg := &config.Config{
 		LogFilePath: "./agent.log",
@@ -90,7 +94,7 @@ func TestNewAgent(t *testing.T) {
 	mc := metrics.NewMetricsCollector(mon, cfg)
 	exporters := []exporter.Exporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
-		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+		&MockHTTPExporter{},
 	}
 	agent := NewAgent(cfg, mc, exporters...)
 
@@ -108,7 +112,7 @@ func TestAgentStart(t *testing.T) {
 	mc := metrics.NewMetricsCollector(mon, cfg)
 	exporters := []exporter.Exporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
-		exporter.NewHTTPExporter(cfg.HTTP.Endpoint),
+		&MockHTTPExporter{},
 	}
 	agent := NewAgent(cfg, mc, exporters...)
 

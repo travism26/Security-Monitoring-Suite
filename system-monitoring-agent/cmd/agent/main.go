@@ -23,8 +23,14 @@ func main() {
 
 	// Load configuration
 	cfg, err := config.LoadConfig()
+
 	if err != nil {
 		log.Fatalf("Error loading configuration: %v", err)
+	}
+
+	storage, err := exporter.NewMetricStorage(cfg.StorageDir)
+	if err != nil {
+		log.Fatalf("Error creating metric storage: %v", err)
 	}
 
 	// Initialize components
@@ -41,7 +47,11 @@ func main() {
 
 	// Only add HTTP exporter if endpoint is configured
 	if cfg.HTTP.Endpoint != "" {
-		exporters = append(exporters, exporter.NewHTTPExporter(cfg.HTTP.Endpoint))
+		exporter, err := exporter.NewHTTPExporter(cfg.HTTP.Endpoint, storage)
+		if err != nil {
+			log.Fatalf("Error creating HTTP exporter: %v", err)
+		}
+		exporters = append(exporters, exporter)
 	}
 
 	// Initialize agent with exporters
