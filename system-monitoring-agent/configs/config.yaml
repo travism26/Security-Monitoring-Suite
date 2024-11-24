@@ -1,11 +1,12 @@
-LogFilePath: "./agent.log"
+LogFilePath: './agent.log'
 Interval: 10
 Kafka:
   Brokers:
-    - "localhost:9092"
-  Topic: "system-metrics"
+    - 'localhost:9092'
+  Topic: 'system-metrics'
 HTTP:
-  Endpoint: "" # Leave blank to disable HTTP exporter
+  Endpoint: 'http://localhost:3000/api/v1/system-metrics/ingest'
+  StorageDir: './storage'
 Monitors:
   CPU: true
   Memory: true

@@ -1,3 +1,3 @@
 export enum Topics {
-  SystemEvents = 'system-events',
+  SystemMetrics = 'system-metrics',
 }

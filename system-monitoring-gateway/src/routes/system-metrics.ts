@@ -21,6 +21,8 @@ router.post(
   async (req: Request<{}, {}, SystemMetrics>, res: Response) => {
     try {
       const { data, timestamp } = req.body;
+      const util = require('util');
+      console.log('Received metrics:', util.inspect(data, false, null, true));
 
       // Update Prometheus counter for incoming metrics
       const counter = metricsRegistry.getSingleMetric(

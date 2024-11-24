@@ -41,14 +41,6 @@ func (mc *MetricsCollector) Collect() map[string]interface{} {
 	now := time.Now()
 	metrics := make(map[string]interface{})
 
-	// Add metadata
-	metrics["timestamp"] = now.Unix()
-	metrics["timestamp_utc"] = now.UTC().Format(time.RFC3339)
-	metrics["host_info"] = map[string]string{
-		"os":   runtime.GOOS,
-		"arch": runtime.GOARCH,
-	}
-
 	// Collect from each collector
 	for _, collector := range mc.collectors {
 		if data, err := collector.Collect(); err == nil {
@@ -58,14 +50,15 @@ func (mc *MetricsCollector) Collect() map[string]interface{} {
 		}
 	}
 
-	// Analyze metrics for threats
-	if mc.analyzer != nil {
-		indicators := mc.analyzer.AnalyzeMetrics(metrics)
-		if len(indicators) > 0 {
-			metrics["threat_indicators"] = indicators
-		}
+	// Structure the response according to the API requirements
+	return map[string]interface{}{
+		"timestamp": now.UTC().Format(time.RFC3339),
+		"data": map[string]interface{}{
+			"host_info": map[string]string{
+				"os":   runtime.GOOS,
+				"arch": runtime.GOARCH,
+			},
+			"metrics": metrics,
+		},
 	}
-
-	mc.lastCheck = now
-	return metrics
 }

@@ -1,4 +1,6 @@
-export interface SystemMetrics {
+import { Event } from '../kafka/event';
+
+export interface SystemMetrics extends Event {
   timestamp: string;
   data: {
     host_info?: {
@@ -19,6 +21,18 @@ export interface SystemMetrics {
       network?: {
         bytes_sent: number;
         bytes_received: number;
+      };
+      processes?: {
+        total_count: number;
+        total_cpu_percent: number;
+        total_memory_usage: number;
+        process_list: Array<{
+          pid: number;
+          name: string;
+          cpu_percent: number;
+          memory_usage: number;
+          status: string;
+        }>;
       };
     };
     threat_indicators?: Array<{

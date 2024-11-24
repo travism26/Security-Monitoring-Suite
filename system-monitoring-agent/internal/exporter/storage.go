@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -21,6 +22,11 @@ type SQLiteStorage struct {
 }
 
 func NewMetricStorage(storageDir string) (*SQLiteStorage, error) {
+	// Create storage directory if it doesn't exist
+	if err := os.MkdirAll(storageDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create storage directory: %w", err)
+	}
+
 	dbPath := fmt.Sprintf("%s/metrics.db", storageDir)
 	db, err := sql.Open("sqlite3", dbPath)
 	if err != nil {
