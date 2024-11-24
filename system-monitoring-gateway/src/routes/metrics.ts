@@ -7,7 +7,7 @@ const router = express.Router();
 // Create a Registry which registers the metrics
 const register = new client.Registry();
 register.setDefaultLabels({
-  app: 'auth-service',
+  app: 'system-monitoring-gateway',
 });
 
 // Enable the collection of default metrics

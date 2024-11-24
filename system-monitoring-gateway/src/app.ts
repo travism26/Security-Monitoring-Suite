@@ -6,6 +6,7 @@ import { NotFoundError } from './errors/not-found-error';
 import { errorHandler } from './middlewares/error-handlers';
 // Import the metrics router
 import { metricsRouter } from './routes/metrics';
+import { systemMetricsRouter } from './routes/system-metrics';
 
 const app = express();
 app.set('trust proxy', true);
@@ -18,7 +19,7 @@ app.use(
 if (process.env.NODE_ENV !== 'test') {
   app.use(metricsRouter);
 }
-
+app.use(systemMetricsRouter);
 app.all('*', async (req, res) => {
   throw new NotFoundError();
 });
