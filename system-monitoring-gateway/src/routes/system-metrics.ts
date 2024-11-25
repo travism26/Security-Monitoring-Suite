@@ -4,6 +4,7 @@ import { validateRequest } from '../middlewares/validate-request';
 import { metricsRegistry } from './metrics';
 import { Counter } from 'prom-client';
 import { SystemMetrics } from '../payload/system-metrics';
+import { kafkaWrapper } from '../kafka/kafka-wrapper';
 
 const router = express.Router();
 
@@ -32,7 +33,17 @@ router.post(
         counter.inc();
       }
 
-      // TODO: Add Kafka producer logic here
+      try {
+        const kafkaProducer = kafkaWrapper.getProducer('system-metrics');
+        await kafkaProducer.publish({
+          ...data,
+        });
+      } catch (error) {
+        console.error('Error producing metrics to Kafka:', error);
+        res.status(500).json({
+          errors: [{ message: 'Error producing metrics to Kafka' }],
+        });
+      }
 
       res.status(202).json({
         status: 'accepted',
