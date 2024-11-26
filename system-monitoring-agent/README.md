@@ -62,7 +62,7 @@ go mod download
 The agent can be configured through `configs/config.yaml`:
 
 ```yaml
-LogFilePath: "./agent.log"
+LogFilePath: './agent.log'
 Interval: 10 # Polling interval in seconds
 Monitors:
   CPU: true
@@ -157,12 +157,21 @@ cat agent.log
 This project is currently under active development. Upcoming features:
 
 - [x] Process monitoring (Completed 2024-11-22)
-- [x] Push payloads to API Gateway (http / rest) which will be sent to Kafka ( I think its working lol )
-- [ ] System temperature monitoring
-- [ ] Alert configurations (Maybe not this should be collection only alerts will be in SIEM / XDR side)
-- [ ] Web interface for metrics visualization (MAYBE NOT KEEP THIS APP SMALL)
-- [ ] Docker containerization
+- [x] Push payloads to API Gateway (http / rest) which will be sent to Kafka (Completed 2024-11-24)
 - [ ] Support for Linux systems
+- [ ] Docker containerization
+
+Future Security Telemetry Roadmap:
+
+- [ ] File integrity monitoring (FIM)
+- [ ] Process lineage tracking
+- [ ] Network connection monitoring (open ports, active connections)
+- [ ] Security software status monitoring
+- [ ] USB device monitoring
+- [ ] DNS query logging
+- [ ] User session tracking
+
+Note: System log collection and analysis will be handled by a separate log shipping solution to maintain this agent's lightweight nature and separation of concerns.
 
 ## Contributing
 
