@@ -6,9 +6,9 @@ A comprehensive suite of security and monitoring tools designed to enhance syste
 
 ### Current Progress:
 
-- ✅ **[System Monitoring Agent](./system-monitoring-agent/): In Development**
-- 🏗️ **API Gateway for Metrics**: In Development
-- 📝 **Threat Detection Simulation**: Planning Phase
+- ✅ **[System Monitoring Agent](./system-monitoring-agent/)**: Completed
+- ✅ **API Gateway for Metrics**: Completed
+- 📝 **Threat Detection Simulation**: Planning Phase / In Progress
 - 📝 **Log Aggregator with SIEM-Like Features**: Planning Phase
 - 📝 **Mini XDR System**: Planning Phase
 - 📝 **Network Protocol Analyzer**: Planning Phase
