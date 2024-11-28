@@ -1,0 +1,10 @@
+endpoint: 'http://localhost:3000/api/v1/system-metrics/ingest'
+interval: 60 # seconds
+scenarios:
+  high-cpu:
+    cpu_usage: 95.0
+    duration: 300 # seconds
+  malicious-process:
+    process_name: 'malicious.exe'
+    cpu_percent: 80.0
+    memory_percent: 20.0
