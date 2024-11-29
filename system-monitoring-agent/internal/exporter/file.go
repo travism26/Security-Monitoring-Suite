@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+
+	"github.com/travism26/shared-monitoring-libs/types"
 )
 
 type FileExporter struct {
@@ -15,7 +17,7 @@ func NewFileExporter(outputFilePath string) *FileExporter {
 	return &FileExporter{outputFilePath: outputFilePath}
 }
 
-func (e *FileExporter) Export(data map[string]interface{}) error {
+func (e *FileExporter) Export(data types.MetricPayload) error {
 	file, err := os.OpenFile(e.outputFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err

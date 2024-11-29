@@ -6,6 +6,7 @@ import (
 
 	"github.com/shirou/gopsutil/mem"
 	"github.com/stretchr/testify/assert"
+	"github.com/travism26/shared-monitoring-libs/types"
 	"github.com/travism26/system-monitoring-agent/internal/config"
 	"github.com/travism26/system-monitoring-agent/internal/core"
 	"github.com/travism26/system-monitoring-agent/internal/exporter"
@@ -77,7 +78,7 @@ func (m *MockMonitor) GetProcesses() ([]core.ProcessInfo, error) {
 
 type MockHTTPExporter struct{}
 
-func (m *MockHTTPExporter) Export(data map[string]interface{}) error {
+func (m *MockHTTPExporter) Export(data types.MetricPayload) error {
 	return nil
 }
 
@@ -92,7 +93,7 @@ func TestNewAgent(t *testing.T) {
 	}
 	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon, cfg)
-	exporters := []exporter.Exporter{
+	exporters := []exporter.MetricsExporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
 		&MockHTTPExporter{},
 	}
@@ -110,7 +111,7 @@ func TestAgentStart(t *testing.T) {
 	}
 	mon := &MockMonitor{}
 	mc := metrics.NewMetricsCollector(mon, cfg)
-	exporters := []exporter.Exporter{
+	exporters := []exporter.MetricsExporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
 		&MockHTTPExporter{},
 	}

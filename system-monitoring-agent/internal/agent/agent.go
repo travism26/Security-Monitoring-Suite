@@ -13,11 +13,11 @@ import (
 type Agent struct {
 	config    *config.Config
 	metrics   *metrics.MetricsCollector
-	exporters []exporter.Exporter
+	exporters []exporter.MetricsExporter
 	interval  time.Duration
 }
 
-func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exporter.Exporter) *Agent {
+func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exporter.MetricsExporter) *Agent {
 	return &Agent{
 		config:    cfg,
 		metrics:   mc,

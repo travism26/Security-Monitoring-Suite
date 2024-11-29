@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/travism26/shared-monitoring-libs/types"
 )
 
 type MetricStorage interface {
@@ -125,7 +126,7 @@ func (s *SQLiteStorage) LoadUnsent() ([]MetricBatch, error) {
 			return nil, fmt.Errorf("failed to scan metric row: %w", err)
 		}
 
-		var data map[string]interface{}
+		var data types.MetricPayload
 		if err := json.Unmarshal([]byte(dataStr), &data); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal metric data: %w", err)
 		}

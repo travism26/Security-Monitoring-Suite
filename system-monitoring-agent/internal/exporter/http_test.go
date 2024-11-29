@@ -5,7 +5,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/travism26/shared-monitoring-libs/types"
 )
+
+type Exporter interface {
+	Export(data types.MetricPayload) error
+	Close() error
+}
 
 func TestNewHTTPExporter(t *testing.T) {
 	// Test case 1: with endpoint
@@ -70,11 +77,20 @@ func TestHTTPExporter_Export(t *testing.T) {
 	}
 
 	// Prepare test data
-	testData := map[string]interface{}{
-		"cpu":    75.5,
-		"memory": float64(2048),
+	testData := types.MetricPayload{
+		Data: types.MetricData{
+			Metrics: map[string]interface{}{
+				"cpu_usage":    75.5,
+				"memory_usage": 2048,
+			},
+		},
 	}
 	t.Log("📤 Sending test data:", testData)
+
+	// Convert struct to map for comparison
+	testDataMap, _ := json.Marshal(testData)
+	var testDataAsMap map[string]interface{}
+	json.Unmarshal(testDataMap, &testDataAsMap)
 
 	// Test export
 	err = exporter.Export(testData)
@@ -85,7 +101,7 @@ func TestHTTPExporter_Export(t *testing.T) {
 
 	// Verify the exported data
 	t.Log("🔍 Verifying received data matches sent data...")
-	for key, expected := range testData {
+	for key, expected := range testDataAsMap {
 		received, ok := receivedData[key]
 		if !ok {
 			t.Errorf("❌ Missing key in exported data: %s", key)
@@ -114,7 +130,16 @@ func TestHTTPExporter_ExportError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create exporter: %v", err)
 	}
-	testData := map[string]interface{}{"test": "data"}
+
+	// Create test data as MetricPayload
+	testData := types.MetricPayload{
+		Data: types.MetricData{
+			Metrics: map[string]interface{}{
+				"cpu_usage":    0,
+				"memory_usage": types.MemoryMetrics{Used: 0},
+			},
+		},
+	}
 
 	// Test export with error response
 	err = exporter.Export(testData)

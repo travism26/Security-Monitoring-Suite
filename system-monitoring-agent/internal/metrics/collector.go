@@ -2,9 +2,11 @@
 package metrics
 
 import (
+	"os"
 	"runtime"
 	"time"
 
+	"github.com/travism26/shared-monitoring-libs/types"
 	"github.com/travism26/system-monitoring-agent/internal/config"
 	"github.com/travism26/system-monitoring-agent/internal/core"
 	"github.com/travism26/system-monitoring-agent/internal/metrics/collectors"
@@ -37,9 +39,10 @@ func NewMetricsCollector(monitor core.SystemMonitor, cfg *config.Config) *Metric
 	}
 }
 
-func (mc *MetricsCollector) Collect() map[string]interface{} {
+func (mc *MetricsCollector) Collect() types.MetricPayload {
 	now := time.Now()
 	metrics := make(map[string]interface{})
+	var collectionErrors []string
 
 	// Collect from each collector
 	for _, collector := range mc.collectors {
@@ -47,18 +50,40 @@ func (mc *MetricsCollector) Collect() map[string]interface{} {
 			for k, v := range data {
 				metrics[k] = v
 			}
+		} else {
+			collectionErrors = append(collectionErrors, err.Error())
 		}
 	}
 
+	// Analyze metrics for threats
+	threatIndicators := mc.analyzer.AnalyzeMetrics(metrics)
+
 	// Structure the response according to the API requirements
-	return map[string]interface{}{
-		"timestamp": now.UTC().Format(time.RFC3339),
-		"data": map[string]interface{}{
-			"host_info": map[string]string{
-				"os":   runtime.GOOS,
-				"arch": runtime.GOARCH,
+	return types.MetricPayload{
+		Timestamp: now.UTC().Format(time.RFC3339),
+		Data: types.MetricData{
+			HostInfo: types.HostInfo{
+				OS:        runtime.GOOS,
+				Arch:      runtime.GOARCH,
+				Hostname:  hostname(),
+				CPUCores:  runtime.NumCPU(),
+				GoVersion: runtime.Version(),
 			},
-			"metrics": metrics,
+			Metrics:          metrics,
+			ThreatIndicators: threatIndicators,
+			Metadata: types.MetadataInfo{
+				CollectionDuration: time.Since(now).String(),
+				CollectorCount:     len(mc.collectors),
+				Errors:             collectionErrors,
+			},
 		},
 	}
+}
+
+func hostname() string {
+	name, err := os.Hostname()
+	if err != nil {
+		return "unknown"
+	}
+	return name
 }

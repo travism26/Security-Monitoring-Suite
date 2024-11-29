@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/IBM/sarama"
+	"github.com/travism26/shared-monitoring-libs/types"
 )
 
 // mtravis notes: I dont think we need this I dont plan on directly connecting to kafka
@@ -40,7 +41,7 @@ func NewKafkaExporter(brokers []string, topic string) (*KafkaExporter, error) {
 // Export sends the provided data to Kafka as a JSON message
 // data is a map of values to be exported
 // Returns an error if marshaling or sending fails
-func (k *KafkaExporter) Export(data map[string]interface{}) error {
+func (k *KafkaExporter) Export(data types.MetricPayload) error {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return err

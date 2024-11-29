@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/travism26/shared-monitoring-libs/types"
 )
 
 type HTTPExporter struct {
@@ -18,7 +20,7 @@ type HTTPExporter struct {
 }
 
 type MetricBatch struct {
-	Data      map[string]interface{}
+	Data      types.MetricPayload // Changed to use types.MetricPayload instead of map[string]interface{}
 	Timestamp time.Time
 	Attempts  int
 }
@@ -49,7 +51,9 @@ func NewHTTPExporter(endpoint string, storage MetricStorage) (*HTTPExporter, err
 	return exporter, nil
 }
 
-func (h *HTTPExporter) Export(data map[string]interface{}) error {
+// Changed interface to use types.MetricPayload
+// before: func (h *HTTPExporter) Export(data map[string]interface{}) error {
+func (h *HTTPExporter) Export(data types.MetricPayload) error {
 	if !h.enabled {
 		return nil
 	}

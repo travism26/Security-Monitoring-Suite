@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/travism26/shared-monitoring-libs/types"
 )
 
 func TestNewFileExporter(t *testing.T) {
@@ -32,9 +34,13 @@ func TestFileExporter_Export(t *testing.T) {
 	exporter := NewFileExporter(testFile)
 
 	// Test data
-	testData := map[string]interface{}{
-		"cpu":    50.5,
-		"memory": float64(1024),
+	testData := types.MetricPayload{
+		Data: types.MetricData{
+			Metrics: map[string]interface{}{
+				"cpu_usage":    75.5,
+				"memory_usage": 2048,
+			},
+		},
 	}
 
 	// Test export
@@ -50,19 +56,19 @@ func TestFileExporter_Export(t *testing.T) {
 	}
 
 	// Parse the JSON line
-	var exportedData map[string]interface{}
+	var exportedData types.MetricPayload
 	err = json.Unmarshal(content[:len(content)-1], &exportedData) // Remove trailing newline
 	if err != nil {
 		t.Fatalf("Failed to parse JSON: %v", err)
 	}
 
 	// Verify the exported data
-	if exportedData["cpu"] != testData["cpu"] {
-		t.Errorf("Expected cpu value %v, got %v", testData["cpu"], exportedData["cpu"])
+	if exportedData.Data.Metrics["cpu_usage"] != testData.Data.Metrics["cpu_usage"] {
+		t.Errorf("Expected cpu value %v, got %v", testData.Data.Metrics["cpu_usage"], exportedData.Data.Metrics["cpu_usage"])
 	}
-	if exportedData["memory"] != testData["memory"] {
+	if exportedData.Data.Metrics["memory_usage"] != testData.Data.Metrics["memory_usage"] {
 		t.Errorf("Expected memory value %v (type: %T), got %v (type: %T)",
-			testData["memory"], testData["memory"],
-			exportedData["memory"], exportedData["memory"])
+			testData.Data.Metrics["memory_usage"], testData.Data.Metrics["memory_usage"],
+			exportedData.Data.Metrics["memory_usage"], exportedData.Data.Metrics["memory_usage"])
 	}
 }

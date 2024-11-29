@@ -41,7 +41,7 @@ func main() {
 	mc := metrics.NewMetricsCollector(mon, cfg)
 
 	// Initialize exporters (file and http)
-	exporters := []exporter.Exporter{
+	exporters := []exporter.MetricsExporter{
 		exporter.NewFileExporter(cfg.LogFilePath),
 	}
 

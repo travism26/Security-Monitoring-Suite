@@ -23,7 +23,15 @@ router.post(
     try {
       const { data, timestamp } = req.body;
       const util = require('util');
-      console.log('Received metrics:', util.inspect(data, false, null, true));
+
+      // Create a copy of data without processes
+      const filteredData = { ...data };
+      delete filteredData.metrics.processes;
+
+      console.log(
+        'Received metrics:',
+        util.inspect(filteredData, false, null, true)
+      );
 
       // Update Prometheus counter for incoming metrics
       const counter = metricsRegistry.getSingleMetric(
@@ -33,26 +41,35 @@ router.post(
         counter.inc();
       }
 
+      // Attempt to publish to Kafka
       try {
         const kafkaProducer = kafkaWrapper.getProducer('system-metrics');
         await kafkaProducer.publish({
           ...data,
         });
-      } catch (error) {
-        console.error('Error producing metrics to Kafka:', error);
-        res.status(500).json({
-          errors: [{ message: 'Error producing metrics to Kafka' }],
+
+        // Only send success response if Kafka publish succeeds
+        return res.status(202).json({
+          status: 'accepted',
+          timestamp: new Date().toISOString(),
+        });
+      } catch (kafkaError) {
+        console.error('Error producing metrics to Kafka:', kafkaError);
+        // Return early with Kafka-specific error
+        return res.status(202).json({
+          errors: [
+            {
+              message: 'Metrics service temporarily unavailable',
+              details: 'Kafka connection not established',
+            },
+          ],
         });
       }
-
-      res.status(202).json({
-        status: 'accepted',
-        timestamp: new Date().toISOString(),
-      });
     } catch (error) {
       console.error('Error processing metrics:', error);
-      res.status(500).json({
-        errors: [{ message: 'Error processing metrics' }],
+      // Handle any other unexpected errors
+      return res.status(500).json({
+        errors: [{ message: 'Internal server error while processing metrics' }],
       });
     }
   }

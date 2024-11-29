@@ -7,8 +7,8 @@ import (
 )
 
 func ValidateMetrics(metrics types.MetricPayload) error {
-	if metrics.CPUUsage < 0 || metrics.CPUUsage > 100 {
-		return fmt.Errorf("invalid CPU usage: %f", metrics.CPUUsage)
+	if metrics.Data.Metrics["cpu_usage"].(types.CPUUsage).Usage < 0 || metrics.Data.Metrics["cpu_usage"].(types.CPUUsage).Usage > 100 {
+		return fmt.Errorf("invalid CPU usage: %f", metrics.Data.Metrics["cpu_usage"].(types.CPUUsage).Usage)
 	}
 
 	// Add more validation rules

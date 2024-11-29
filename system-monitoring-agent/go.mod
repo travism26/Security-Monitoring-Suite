@@ -8,7 +8,10 @@ require (
 	github.com/shirou/gopsutil v3.21.11+incompatible
 	github.com/spf13/viper v1.19.0
 	github.com/stretchr/testify v1.9.0
+	github.com/travism26/shared-monitoring-libs v0.1.0
 )
+
+replace github.com/travism26/shared-monitoring-libs => ../shared-monitoring-libs
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect

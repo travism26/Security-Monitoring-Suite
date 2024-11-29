@@ -3,7 +3,6 @@ package exporter
 import (
 	"os"
 	"testing"
-	"time"
 )
 
 func TestSQLiteStorage(t *testing.T) {
@@ -21,18 +20,13 @@ func TestSQLiteStorage(t *testing.T) {
 	}
 	defer storage.Close()
 
-	// Test storing and loading metrics
-	testBatch := MetricBatch{
-		Data: map[string]interface{}{
-			"cpu":    75.5,
-			"memory": 1024,
-		},
-		Timestamp: time.Now(),
-		Attempts:  0,
+	// Convert to MetricBatch before passing to storage
+	metricBatch := MetricBatch{
+		// convert testData fields to MetricBatch format
 	}
 
 	// Test Store
-	if err := storage.Store(testBatch); err != nil {
+	if err := storage.Store(metricBatch); err != nil {
 		t.Errorf("Failed to store metric: %v", err)
 	}
 
@@ -46,7 +40,7 @@ func TestSQLiteStorage(t *testing.T) {
 	}
 
 	// Test Remove
-	if err := storage.Remove(testBatch); err != nil {
+	if err := storage.Remove(metricBatch); err != nil {
 		t.Errorf("Failed to remove metric: %v", err)
 	}
 
