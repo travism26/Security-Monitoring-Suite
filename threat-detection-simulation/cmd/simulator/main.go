@@ -1,24 +1,39 @@
-package logger
+package main
 
 import (
 	"log"
-	"os"
 	"time"
+
+	"github.com/travism26/threat-detection-simulation/internal/config"
+	"github.com/travism26/threat-detection-simulation/internal/scenarios"
 )
 
-type Logger struct {
-	*log.Logger
-}
-
-func New(prefix string) *Logger {
-	return &Logger{
-		Logger: log.New(os.Stdout, prefix+" ", log.LstdFlags|log.Lmsgprefix),
+func main() {
+	// Load configuration
+	cfg, err := config.LoadConfig("internal/config/config.yaml")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
-}
 
-func (l *Logger) LogMetricsSent(scenario string, endpoint string) {
-	l.Printf("Metrics sent - Scenario: %s, Endpoint: %s, Time: %s",
-		scenario,
-		endpoint,
-		time.Now().Format(time.RFC3339))
+	// Run simulation loop
+	for {
+		// Generate high CPU scenario
+		metrics := scenarios.HighCPUScenario()
+
+		// Validate metrics
+		if err := scenarios.ValidateMetrics(metrics); err != nil {
+			log.Printf("Invalid metrics: %v", err)
+			continue
+		}
+
+		// Send metrics to endpoint
+		if err := scenarios.SendMetrics(cfg.Endpoint, metrics); err != nil {
+			log.Printf("Failed to send metrics: %v", err)
+		} else {
+			log.Printf("Successfully sent metrics to %s", cfg.Endpoint)
+		}
+
+		// Wait for configured interval
+		time.Sleep(time.Duration(cfg.Interval) * time.Second)
+	}
 }

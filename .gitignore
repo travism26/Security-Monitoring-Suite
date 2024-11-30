@@ -26,3 +26,6 @@ go.work.sum
 
 # Log files
 *.log
+
+# Cursor files
+.file-cursors.md

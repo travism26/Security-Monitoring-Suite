@@ -19,13 +19,74 @@ func HighCPUScenario() types.MetricPayload {
 			Metrics: map[string]interface{}{
 				"cpu_usage": types.CPUUsage{Usage: 95.0, Total: 100},
 			},
+			ThreatIndicators: []types.ThreatIndicator{
+				{
+					Type:        "scenario",
+					Description: "High CPU usage",
+					Severity:    "HIGH",
+					Score:       100,
+					Timestamp:   time.Now(),
+					Metadata:    types.Metadata{Tags: []string{"high_cpu"}},
+				},
+				{
+					Type:        "scenario",
+					Description: "Malicious process",
+					Severity:    "HIGH",
+					Score:       100,
+					Timestamp:   time.Now(),
+					Metadata:    types.Metadata{Tags: []string{"malicious_process"}},
+				},
+				{
+					Type:        "scenario",
+					Description: "High memory usage",
+					Severity:    "HIGH",
+					Score:       100,
+					Timestamp:   time.Now(),
+					Metadata:    types.Metadata{Tags: []string{"high_memory"}},
+				},
+				{
+					Type:        "scenario",
+					Description: "Network activity",
+					Severity:    "HIGH",
+					Score:       100,
+					Timestamp:   time.Now(),
+					Metadata:    types.Metadata{Tags: []string{"network_activity"}},
+				},
+			},
 		},
 	}
 }
 
+/*
+type ThreatIndicator struct {
+	Type        string                 `json:"type"`
+	Description string                 `json:"description"`
+	Severity    string                 `json:"severity"`
+	Score       float64                `json:"score"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Metadata    Metadata               `json:"metadata"`
+	Details     map[string]interface{} `json:"details,omitempty"`
+}
+*/
+
 // MaliciousProcessScenario simulates a known malicious process
 func MaliciousProcessScenario() types.MetricPayload {
 	return types.MetricPayload{
-		// ... scenario configuration
+		Timestamp: time.Now().Format(time.RFC3339),
+		Data: types.MetricData{
+			HostInfo: types.HostInfo{
+				OS:   runtime.GOOS,
+				Arch: runtime.GOARCH,
+			},
+			Metrics: map[string]interface{}{
+				"processes": []map[string]interface{}{
+					{
+						"name":           "malicious.exe",
+						"cpu_percent":    80.0,
+						"memory_percent": 20.0,
+					},
+				},
+			},
+		},
 	}
 }
