@@ -42,6 +42,17 @@ router.post(
       }
 
       // Attempt to publish to Kafka
+      if (!kafkaWrapper.isInitialized()) {
+        return res.status(503).json({
+          errors: [
+            {
+              message: 'Metrics service temporarily unavailable',
+              details: 'Kafka connection not established',
+            },
+          ],
+        });
+      }
+
       try {
         const kafkaProducer = kafkaWrapper.getProducer('system-metrics');
         await kafkaProducer.publish({

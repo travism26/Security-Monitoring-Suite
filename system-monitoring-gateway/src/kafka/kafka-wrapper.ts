@@ -104,6 +104,14 @@ class KafkaWrapper {
     console.log('Consumer found');
     return this._consumers.get(id)!;
   }
+
+  /**
+   * Checks if the Kafka client is initialized.
+   * @returns {boolean} True if the client is initialized, false otherwise.
+   */
+  isInitialized(): boolean {
+    return !!this._client;
+  }
 }
 
 export const kafkaWrapper = new KafkaWrapper();

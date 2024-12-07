@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-monitoring-gateway
+  labels:
+    app: system-monitoring-gateway
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app: system-monitoring-gateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: system-monitoring-gateway
+  labels:
+    app: system-monitoring-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: system-monitoring-gateway
+  template:
+    metadata:
+      labels:
+        app: system-monitoring-gateway
+    spec:
+      containers:
+        - name: system-monitoring-gateway
+          image: travism26/system-monitoring-gateway:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: KAFKA_BROKER
+              valueFrom:
+                configMapKeyRef:
+                  name: system-monitoring-config
+                  key: kafka-broker
+                  optional: true
+            - name: KAFKA_CLIENT_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '256Mi'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: system-monitoring-config
+data:
+  kafka-broker: 'systems-kafka-cluster-kafka-bootstrap:9092'
+  kafka-client-id: 'system-monitoring-gateway' # Ill use pod.metadata.name
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-monitoring-gateway-metrics
+spec:
+  type: NodePort
+  selector:
+    app: system-monitoring-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      nodePort: 30001

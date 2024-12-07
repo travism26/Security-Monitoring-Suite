@@ -22,15 +22,15 @@ spec:
             - containerPort: 8080
           env:
             - name: KAFKA_CLUSTERS_0_NAME
-              value: "systems-kafka-cluster"
+              value: 'systems-kafka-cluster'
             - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
-              value: "systems-kafka-cluster-kafka-bootstrap:9093"
+              value: 'systems-kafka-cluster-kafka-bootstrap:9093'
             - name: KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL
-              value: "SASL_SSL"
+              value: 'SASL_SSL'
             - name: KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM
-              value: "SCRAM-SHA-512"
+              value: 'SCRAM-SHA-512'
             - name: KAFKA_CLUSTERS_0_SSL_ENABLED
-              value: "true"
+              value: 'true'
             - name: KAFKA_CLUSTERS_0_USERNAME
               valueFrom:
                 secretKeyRef:
@@ -41,6 +41,10 @@ spec:
                 secretKeyRef:
                   name: my-kafka-user-secret
                   key: password
+            - name: KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG
+              value: 'org.apache.kafka.common.security.scram.ScramLoginModule required username="${KAFKA_CLUSTERS_0_USERNAME}" password="${KAFKA_CLUSTERS_0_PASSWORD}";'
+            - name: JAVA_OPTS
+              value: '-Djavax.net.ssl.trustStore=/path/to/truststore.jks -Djavax.net.ssl.trustStorePassword=yourTrustStorePassword'
 
 ---
 apiVersion: v1

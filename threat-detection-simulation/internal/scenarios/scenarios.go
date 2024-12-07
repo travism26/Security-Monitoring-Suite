@@ -57,18 +57,6 @@ func HighCPUScenario() types.MetricPayload {
 	}
 }
 
-/*
-type ThreatIndicator struct {
-	Type        string                 `json:"type"`
-	Description string                 `json:"description"`
-	Severity    string                 `json:"severity"`
-	Score       float64                `json:"score"`
-	Timestamp   time.Time              `json:"timestamp"`
-	Metadata    Metadata               `json:"metadata"`
-	Details     map[string]interface{} `json:"details,omitempty"`
-}
-*/
-
 // MaliciousProcessScenario simulates a known malicious process
 func MaliciousProcessScenario() types.MetricPayload {
 	return types.MetricPayload{
