@@ -8,7 +8,7 @@ A comprehensive suite of security and monitoring tools designed to enhance syste
 
 - ✅ **[System Monitoring Agent](./system-monitoring-agent/)**: Completed
 - ✅ **API Gateway for Metrics**: Completed
-- 📝 **Threat Detection Simulation**: Planning Phase / In Progress
+- ✅ **Threat Detection Simulation**: Completed (Basic push to API Gateway a payload)
 - 📝 **Log Aggregator with SIEM-Like Features**: Planning Phase
 - 📝 **Mini XDR System**: Planning Phase
 - 📝 **Network Protocol Analyzer**: Planning Phase
@@ -36,6 +36,8 @@ The CyberSecurity-Toolset repository is being developed as an integrated securit
    - Collects and validates metrics from the Monitoring Agent.
    - Publishes metrics as Kafka events for downstream consumers.
    - Acts as the central hub for metric ingestion.
+   - Utilizes Kafka for high throughput and scalability.
+     - I use the kafka operator to deploy the kafka cluster, and kafka-ui to view the topics and messages.
 
 3. **Threat Detection Simulation**
 

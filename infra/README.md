@@ -1,7 +1,8 @@
 # Notes
 
-- The `system-monitoring-gateway` service is exposed on port `30001` on the nodes.
-- The `system-monitoring-gateway-metrics` service is exposed on port `8080` on the nodes.
+- The `system-monitoring-gateway` service is exposed on port `30001` on the node port.
+- The `kafka-ui` service is exposed on port `30007` on the node port.
+  - http://localhost:30007/ui/clusters/systems-kafka-cluster/all-topics
 
 ## Commands to get details
 
