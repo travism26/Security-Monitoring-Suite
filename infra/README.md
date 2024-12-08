@@ -37,3 +37,16 @@ kubectl get pods <pod-name> -o jsonpath='{.status.containerStatuses[*].state}'
 kubectl describe deployment system-monitoring-gateway | grep -A 10 'Liveness'
 
 ```
+
+# Commands to hit the endpoints
+
+```bash
+# Health check (Verbose)
+curl -v http://localhost:30001/health
+
+# Metrics (Verbose)
+curl -v http://localhost:30001/metrics
+
+# Ingest metrics
+curl -X POST http://localhost:30001/api/v1/system-metrics/ingest -H "Content-Type: application/json" -d '{"data":{"metrics":{"cpu":{"usage":{"total":100,"idle":50}},"memory":{"total":1000,"available":500}},"timestamp":"2024-01-01T00:00:00Z"}}'
+```
