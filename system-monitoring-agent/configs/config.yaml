@@ -5,7 +5,10 @@ Kafka:
     - 'localhost:9092'
   Topic: 'system-metrics'
 HTTP:
-  Endpoint: 'http://localhost:3000/api/v1/system-metrics/ingest'
+  # The endpoint to send metrics to if using node port
+  # http://localhost:30001/api/v1/system-metrics/ingest
+  # Locally: http://localhost:3000/api/v1/system-metrics/ingest
+  Endpoint: 'http://localhost:30001/api/v1/system-metrics/ingest'
   StorageDir: './storage'
 Monitors:
   CPU: true
