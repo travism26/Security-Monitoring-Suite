@@ -1,6 +1,7 @@
 // routes/metrics.js
 import express from 'express';
 import client from 'prom-client';
+import { kafkaWrapper } from '../kafka/kafka-wrapper';
 
 const router = express.Router();
 
@@ -34,6 +35,15 @@ router.use((req, res, next) => {
 router.get('/metrics', async (req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
+});
+
+router.get('/health', (req, res) => {
+  if (!kafkaWrapper.isInitialized()) {
+    return res.status(503).json({
+      errors: [{ message: 'Kafka service temporarily unavailable' }],
+    });
+  }
+  res.status(200).send('OK');
 });
 
 export { router as metricsRouter, register as metricsRegistry };
