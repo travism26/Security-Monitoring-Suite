@@ -1,8 +1,8 @@
-# Log Aggregator with SIEM-Like Features / Notes
+# Log Aggregator Service (Backend)
 
 ## Objective
 
-Build a centralized log aggregator to collect, store, and analyze logs from multiple sources. Implement basic SIEM-like features for detecting and analyzing potential security threats.
+Build a centralized log aggregation service to collect, store, and analyze logs from multiple sources. Implement basic SIEM-like features for detecting and analyzing potential security threats.
 
 ---
 
@@ -62,21 +62,6 @@ Build a centralized log aggregator to collect, store, and analyze logs from mult
 
 ---
 
-### 5. **Dashboard for Visualization**
-
-- **Purpose**: Create a web-based interface for displaying logs, metrics, and alerts.
-- **Features**:
-  - **Real-Time Logs**:
-    - Display live log entries with severity-based filtering.
-  - **Metrics Graphs**:
-    - Show trends in CPU, memory, and network usage.
-  - **Alerts Section**:
-    - Highlight critical alerts with timestamps and severity.
-  - **Search and Pagination**:
-    - Allow searching logs by host, time range, or severity.
-
----
-
 ## Design Considerations
 
 ### Performance
@@ -93,6 +78,7 @@ Build a centralized log aggregator to collect, store, and analyze logs from mult
 
 - Implement secure access to the REST API using authentication (e.g., JWT).
 - Encrypt sensitive data in transit and at rest.
+- Implement CORS policies to restrict access to authorized UI clients.
 
 ---
 
@@ -104,13 +90,17 @@ Build a centralized log aggregator to collect, store, and analyze logs from mult
    - Stores aggregated logs with support for querying.
 3. **REST API**:
    - Exposes logs, metrics, and alerts via endpoints.
-4. **Dashboard**:
-   - Displays logs, metrics, and alerts visually.
+   - Provides authentication and authorization.
+   - Implements CORS policies.
 
----
+## Related Repositories
+
+- Dashboard UI: [link-to-dashboard-repo] - Web interface for visualizing logs, metrics, and alerts.
 
 ## Future Enhancements
 
 - Integrate machine learning for advanced anomaly detection.
 - Add support for external alerting systems (e.g., Slack, PagerDuty).
 - Include role-based access control (RBAC) for securing log visibility.
+- Implement rate limiting and request quotas.
+- Add API versioning support.
