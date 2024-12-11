@@ -104,3 +104,50 @@ Build a centralized log aggregation service to collect, store, and analyze logs 
 - Include role-based access control (RBAC) for securing log visibility.
 - Implement rate limiting and request quotas.
 - Add API versioning support.
+
+## Directory Structure
+
+Still learning golang and how the best practices are, so this is a rough draft. Based on my research, this is a good starting point.
+
+```plaintext
+log-aggregator/
+├── cmd/
+│   └── server/                 # Application entry point
+│       └── main.go
+├── internal/
+│   ├── config/                 # Configuration management
+│   │   └── config.go
+│   ├── domain/                 # Core business logic and entities
+│   │   ├── log.go
+│   │   ├── alert.go
+│   │   └── metric.go
+│   ├── kafka/                  # Kafka consumer implementation
+│   │   ├── consumer.go
+│   │   └── message.go
+│   ├── repository/            # Database implementations
+│   │   ├── elasticsearch/
+│   │   └── postgres/
+│   ├── handler/               # HTTP handlers
+│   │   ├── log_handler.go
+│   │   ├── alert_handler.go
+│   │   └── metric_handler.go
+│   ├── middleware/            # HTTP middleware
+│   │   ├── auth.go
+│   │   └── cors.go
+│   └── service/              # Business logic implementation
+│       ├── log_service.go
+│       ├── alert_service.go
+│       └── metric_service.go
+├── pkg/                      # Shared packages
+│   ├── logger/
+│   └── validator/
+├── api/                      # API documentation
+│   └── swagger/
+├── deployments/              # Deployment configurations
+│   ├── docker/
+│   └── kubernetes/
+├── scripts/                  # Build and deployment scripts
+├── go.mod
+├── go.sum
+└── README.md
+```
