@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -31,7 +32,9 @@ func main() {
 	}
 
 	// Initialize database
-	db, err := sql.Open("postgres", "postgres connection string here")
+	connectionString := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Name)
+	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
