@@ -4,12 +4,12 @@ A comprehensive suite of security and monitoring tools designed to enhance syste
 
 ## Project Status: 🚧 Work In Progress
 
-### Current Progress:
+### Current Progress: Working on the Log Aggregator
 
 - ✅ **[System Monitoring Agent](./system-monitoring-agent/)**: Completed
 - ✅ **API Gateway for Metrics**: Completed
 - ✅ **Threat Detection Simulation**: Completed (Basic push to API Gateway a payload)
-- 📝 **Log Aggregator with SIEM-Like Features**: Planning Phase
+- 🚧 **Log Aggregator with SIEM-Like Features**: In Development
 - 📝 **Mini XDR System**: Planning Phase
 - 📝 **Network Protocol Analyzer**: Planning Phase
 
