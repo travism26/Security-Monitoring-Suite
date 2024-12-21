@@ -8,20 +8,20 @@ import (
 // Config holds all configuration for our application
 type Config struct {
 	Server struct {
-		Port string
-		Host string
+		Port string `mapstructure:"port"`
+		Host string `mapstructure:"host"`
 	}
 	Kafka struct {
-		Brokers []string
-		Topic   string
-		GroupID string
+		Brokers []string `mapstructure:"brokers"`
+		Topic   string   `mapstructure:"topic"`
+		GroupID string   `mapstructure:"group_id"`
 	}
 	Database struct {
-		Host     string
-		Port     string
-		User     string
-		Password string
-		Name     string
+		Host     string `mapstructure:"host"`
+		Port     string `mapstructure:"port"`
+		User     string `mapstructure:"user"`
+		Password string `mapstructure:"password"`
+		Name     string `mapstructure:"name"`
 	}
 }
 

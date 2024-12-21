@@ -12,63 +12,54 @@ import (
 )
 
 type Consumer struct {
-	consumer   sarama.ConsumerGroup
-	logService *service.LogService
+	consumer   sarama.Consumer
 	topic      string
+	logService *service.LogService
 }
 
-func NewConsumer(brokers []string, groupID string, topic string, logService *service.LogService) (*Consumer, error) {
+func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
-	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
-	consumer, err := sarama.NewConsumerGroup(brokers, groupID, config)
+	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
 		return nil, err
 	}
 
 	return &Consumer{
 		consumer:   consumer,
-		logService: logService,
 		topic:      topic,
+		logService: logService,
 	}, nil
 }
 
 func (c *Consumer) Start(ctx context.Context) error {
-	topics := []string{c.topic}
-	handler := &ConsumerHandler{logService: c.logService}
+	partitions, err := c.consumer.Partitions(c.topic)
+	if err != nil {
+		return err
+	}
 
-	for {
-		err := c.consumer.Consume(ctx, topics, handler)
+	for _, partition := range partitions {
+		pc, err := c.consumer.ConsumePartition(c.topic, partition, sarama.OffsetNewest)
 		if err != nil {
-			log.Printf("Error from consumer: %v", err)
+			return err
 		}
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
+
+		go func(pc sarama.PartitionConsumer) {
+			defer pc.Close()
+			for msg := range pc.Messages() {
+				var logEntry domain.Log
+				if err := json.Unmarshal(msg.Value, &logEntry); err != nil {
+					log.Printf("Error unmarshaling message: %v", err)
+					continue
+				}
+
+				if err := c.logService.StoreLog(&logEntry); err != nil {
+					log.Printf("Error storing log: %v", err)
+				}
+			}
+		}(pc)
 	}
-}
 
-type ConsumerHandler struct {
-	logService *service.LogService
-}
-
-func (h *ConsumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
-	for message := range claim.Messages() {
-		var log domain.Log
-		if err := json.Unmarshal(message.Value, &log); err != nil {
-			continue
-		}
-
-		if err := h.logService.StoreLog(&log); err != nil {
-			continue
-		}
-
-		session.MarkMessage(message, "")
-	}
 	return nil
 }
-
-// Required ConsumerGroupHandler interface methods
-func (h *ConsumerHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
-func (h *ConsumerHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
