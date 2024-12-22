@@ -28,8 +28,8 @@ type Log struct {
 	Level string `json:"level"`
 
 	// Additional structured data associated with the log
-	// This is flexible and can contain any JSON-serializable data
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Metadata    map[string]interface{} `json:"-"`
+	MetadataStr string                 `json:"metadata"`
 }
 
 // LogRepository defines the interface for storing and retrieving logs.

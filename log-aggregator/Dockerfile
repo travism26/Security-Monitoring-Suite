@@ -17,7 +17,11 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/server ./cmd/server
+ARG VERSION=dev
+ARG COMMIT_HASH=unknown
+ARG BUILD_TIME=unknown
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-X main.version=${VERSION} -X main.commitHash=${COMMIT_HASH} -X main.buildTime=${BUILD_TIME}" -o /app/server ./cmd/server
 
 # Final stage
 FROM alpine:3.19
@@ -45,3 +49,10 @@ EXPOSE 8080
 
 # Run the application
 CMD ["./server"] 
+
+# Build the application with version, commit hash, and build time
+# docker build \
+# --build-arg VERSION=1.0.0 \
+# --build-arg COMMIT_HASH=$(git rev-parse HEAD) \
+# --build-arg BUILD_TIME=$(date -u '+%Y-%m-%d_%H:%M:%S') \
+# -t your-image-name .

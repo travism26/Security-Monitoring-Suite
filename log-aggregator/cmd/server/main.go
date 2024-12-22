@@ -20,6 +20,13 @@ import (
 	"github.com/travism26/log-aggregator/internal/service"
 )
 
+// Add these variables at the package level, before the main function
+var (
+	version    = "dev"
+	commitHash = "unknown"
+	buildTime  = "unknown"
+)
+
 // main is the application entry point. The startup flow is:
 // 1. Load configuration
 // 2. Initialize logger
@@ -30,6 +37,7 @@ import (
 // If any critical service fails to start, the application will log the error and exit
 func main() {
 	log.Println("Starting Log Aggregator Service...")
+	log.Printf("Version: %s, Commit: %s, Built at: %s", version, commitHash, buildTime)
 
 	// Create a context that will be canceled on shutdown
 	ctx, cancel := context.WithCancel(context.Background())
