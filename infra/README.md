@@ -51,3 +51,30 @@ curl -v http://localhost:30001/metrics
 # Ingest metrics
 curl -X POST http://localhost:30001/api/v1/system-metrics/ingest -H "Content-Type: application/json" -d '{"data":{"metrics":{"cpu":{"usage":{"total":100,"idle":50}},"memory":{"total":1000,"available":500}},"timestamp":"2024-01-01T00:00:00Z"}}'
 ```
+
+# Run migrations
+
+## Apply the ConfigMap first
+
+```bash
+kubectl apply -f infra/k8s/postgres-migrations-configmap.yaml
+```
+
+## Wait for PostgreSQL pod to be ready
+
+```bash
+kubectl wait --for=condition=ready pod -l app=postgres
+```
+
+## Run the migrations
+
+```bash
+kubectl apply -f infra/k8s/postgres-migrations-job.yaml
+```
+
+## Check migration job status
+
+```bash
+kubectl get jobs postgres-migrations
+kubectl logs job/postgres-migrations
+```

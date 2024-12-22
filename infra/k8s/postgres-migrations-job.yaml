@@ -1,0 +1,32 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-migrations
+spec:
+  template:
+    spec:
+      containers:
+        - name: migrations
+          image: postgres:14
+          command: ['/bin/sh', '-c']
+          args:
+            - |
+              psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres-srv:5432/$POSTGRES_DB" -f /migrations/001_initial_schema.sql
+          env:
+            - name: POSTGRES_DB
+              value: logdb
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: postgres-password
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: postgres-migrations
+      restartPolicy: OnFailure
