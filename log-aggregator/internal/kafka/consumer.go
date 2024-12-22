@@ -56,6 +56,16 @@ func (c *Consumer) Start(ctx context.Context) error {
 
 				if err := c.logService.StoreLog(&logEntry); err != nil {
 					log.Printf("Error storing log: %v", err)
+					continue
+				}
+
+				log.Printf("Successfully processed message from topic '%s', partition: %d, offset: %d",
+					msg.Topic, msg.Partition, msg.Offset)
+				log.Printf("Log Entry Details - ID: %s, Host: %s, Level: %s, Timestamp: %s",
+					logEntry.ID, logEntry.Host, logEntry.Level, logEntry.Timestamp)
+
+				if len(logEntry.Metadata) > 0 {
+					log.Printf("Message contains %d metadata fields", len(logEntry.Metadata))
 				}
 			}
 		}(pc)

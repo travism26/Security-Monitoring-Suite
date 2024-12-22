@@ -1,0 +1,38 @@
+server:
+  port: '8080'
+  host: '0.0.0.0'
+
+kafka:
+  brokers:
+    - 'systems-kafka-cluster-kafka-bootstrap:9092'
+  topic: 'system-metrics'
+  group_id: 'log-aggregator-group'
+
+database:
+  host: 'postgres-srv'
+  port: '5432'
+  user: 'postgres'
+  password: '${POSTGRES_PASSWORD}' # Should be set via environment variable
+  name: 'logdb'
+
+logging:
+  level: 'info'
+  format: 'json'
+  output: 'stdout'
+
+api:
+  cors:
+    allowed_origins:
+      - 'http://localhost:3000'
+    allowed_methods:
+      - 'GET'
+      - 'POST'
+      - 'PUT'
+      - 'DELETE'
+  rate_limit:
+    requests_per_second: 100
+    burst: 50
+
+metrics:
+  enabled: true
+  path: '/metrics'

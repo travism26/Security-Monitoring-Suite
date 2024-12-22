@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-aggregator-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-aggregator
+  template:
+    metadata:
+      labels:
+        app: log-aggregator
+    spec:
+      containers:
+        - name: log-aggregator
+          image: travism26/log-aggregator:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: KAFKA_BROKERS
+              value: systems-kafka-cluster-kafka-bootstrap:9092
+            - name: LOG_AGG_KAFKA_TOPIC
+              value: system-metrics
+            - name: LOG_AGG_KAFKA_GROUP_ID
+              value: log-aggregator-group
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: postgres-password
+                  name: postgres-secret
+            - name: POSTGRES_HOST
+              value: postgres-srv
+            - name: POSTGRES_PORT
+              value: '5432'
+            - name: POSTGRES_DB
+              value: logdb
+            - name: POSTGRES_USER
+              value: postgres
+          resources:
+            requests:
+              cpu: '100m'
+              memory: '128Mi'
+            limits:
+              cpu: '500m'
+              memory: '256Mi'
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-aggregator-srv
+spec:
+  selector:
+    app: log-aggregator
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP
