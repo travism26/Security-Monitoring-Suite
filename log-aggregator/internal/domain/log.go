@@ -30,6 +30,9 @@ type Log struct {
 	// Additional structured data associated with the log
 	Metadata    map[string]interface{} `json:"-"`
 	MetadataStr string                 `json:"metadata"`
+
+	// Processes associated with the log
+	Processes map[string]interface{} `json:"processes"`
 }
 
 // LogRepository defines the interface for storing and retrieving logs.

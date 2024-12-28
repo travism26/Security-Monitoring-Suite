@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/travism26/log-aggregator/internal/domain"
+	"github.com/travism26/log-aggregator/internal/repository/postgres"
 	"github.com/travism26/log-aggregator/internal/service"
 
 	"github.com/IBM/sarama"
@@ -15,12 +16,13 @@ import (
 )
 
 type Consumer struct {
-	consumer   sarama.Consumer
-	topic      string
-	logService *service.LogService
+	consumer          sarama.Consumer
+	topic             string
+	logService        *service.LogService
+	processRepository *postgres.ProcessRepository
 }
 
-func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService) (*Consumer, error) {
+func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService, processRepo *postgres.ProcessRepository) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
@@ -30,9 +32,10 @@ func NewConsumer(brokers []string, groupID, topic string, logService *service.Lo
 	}
 
 	return &Consumer{
-		consumer:   consumer,
-		topic:      topic,
-		logService: logService,
+		consumer:          consumer,
+		topic:             topic,
+		logService:        logService,
+		processRepository: processRepo,
 	}, nil
 }
 
@@ -60,6 +63,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 					Metrics          interface{} `json:"metrics"`
 					ThreatIndicators interface{} `json:"threat_indicators"`
 					Metadata         interface{} `json:"metadata"`
+					Processes        interface{} `json:"processes"`
 				}
 
 				if err := json.Unmarshal(msg.Value, &rawMsg); err != nil {
@@ -91,6 +95,32 @@ func (c *Consumer) Start(ctx context.Context) error {
 					}
 					logEntry.MetadataStr = string(metadataJSON)
 					log.Printf("Metadata processed - JSON string: %s", logEntry.MetadataStr)
+				}
+
+				if rawMsg.Metrics != nil {
+					metrics := rawMsg.Metrics.(map[string]interface{})
+					if processesData, ok := metrics["processes"].(map[string]interface{}); ok {
+						if processList, ok := processesData["process_list"].([]interface{}); ok {
+							var processes []domain.Process
+							for _, p := range processList {
+								proc := p.(map[string]interface{})
+								process := domain.Process{
+									ID:          uuid.New().String(),
+									LogID:       logEntry.ID,
+									Name:        proc["name"].(string),
+									PID:         int(proc["pid"].(float64)),
+									CPUPercent:  proc["cpu_percent"].(float64),
+									MemoryUsage: int64(proc["memory_usage"].(float64)),
+									Status:      proc["status"].(string),
+								}
+								processes = append(processes, process)
+							}
+
+							if err := c.processRepository.StoreBatch(processes); err != nil {
+								log.Printf("Error storing processes: %v", err)
+							}
+						}
+					}
 				}
 
 				// Log final state before storage

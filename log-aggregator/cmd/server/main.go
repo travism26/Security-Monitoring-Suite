@@ -60,9 +60,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// Initialize components
-	repo := postgres.NewLogRepository(db)
-	logService := service.NewLogService(repo)
+	// Initialize repositories
+	logRepo := postgres.NewLogRepository(db)
+	processRepo := postgres.NewProcessRepository(db)
+
+	// Initialize services
+	logService := service.NewLogService(logRepo)
 
 	// Start Kafka consumer
 	consumer, err := kafka.NewConsumer(
@@ -70,6 +73,7 @@ func main() {
 		cfg.Kafka.GroupID,
 		cfg.Kafka.Topic,
 		logService,
+		processRepo,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create Kafka consumer: %v", err)
