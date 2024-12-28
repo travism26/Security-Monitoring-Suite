@@ -24,14 +24,9 @@ router.post(
       const { data, timestamp } = req.body;
       const util = require('util');
 
-      // Create a copy of data without processes
-      const filteredData = { ...data };
-      delete filteredData.metrics.processes;
-
-      console.log(
-        'Received metrics:',
-        util.inspect(filteredData, false, null, true)
-      );
+      // Log only process summary instead of detailed list
+      const processCount = data.processes?.process_list?.length || 0;
+      console.log(`Received ${processCount} processes in metrics payload`);
 
       // Update Prometheus counter for incoming metrics
       const counter = metricsRegistry.getSingleMetric(
@@ -54,10 +49,17 @@ router.post(
       }
 
       try {
+        console.log('mtravis - inside try block');
         const kafkaProducer = kafkaWrapper.getProducer('system-metrics');
+
+        console.log('mtravis - attempting to publish to kafka', data);
+
         await kafkaProducer.publish({
           ...data,
+          timestamp, // Include timestamp in the Kafka message
         });
+
+        console.log('mtravis - published to kafka');
 
         // Only send success response if Kafka publish succeeds
         return res.status(202).json({
@@ -66,7 +68,6 @@ router.post(
         });
       } catch (kafkaError) {
         console.error('Error producing metrics to Kafka:', kafkaError);
-        // Return early with Kafka-specific error
         return res.status(202).json({
           errors: [
             {
@@ -78,7 +79,6 @@ router.post(
       }
     } catch (error) {
       console.error('Error processing metrics:', error);
-      // Handle any other unexpected errors
       return res.status(500).json({
         errors: [{ message: 'Internal server error while processing metrics' }],
       });

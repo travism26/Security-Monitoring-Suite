@@ -26,16 +26,20 @@ func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exp
 	}
 }
 
-func (a *Agent) Start() {
+func (a *Agent) Start(done chan struct{}) {
 	ticker := time.NewTicker(a.interval)
 	defer ticker.Stop()
 
 	for {
-		<-ticker.C
-		data := a.metrics.Collect()
-		for _, exp := range a.exporters {
-			if err := exp.Export(data); err != nil {
-				log.Printf("Error exporting metrics: %v", err)
+		select {
+		case <-done:
+			return
+		case <-ticker.C:
+			data := a.metrics.Collect()
+			for _, exp := range a.exporters {
+				if err := exp.Export(data); err != nil {
+					log.Printf("Error exporting metrics: %v", err)
+				}
 			}
 		}
 	}

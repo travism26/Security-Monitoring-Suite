@@ -15,6 +15,7 @@ type MetricData struct {
 	Metrics          map[string]interface{} `json:"metrics"`
 	ThreatIndicators []ThreatIndicator      `json:"threat_indicators"`
 	Metadata         MetadataInfo           `json:"metadata"`
+	Processes        SystemProcessStats     `json:"processes"`
 }
 
 type HostInfo struct {
@@ -32,10 +33,19 @@ type MemoryMetrics struct {
 	Percent float64 `json:"percent"`
 }
 
-type ProcessMetrics struct {
-	Name          string  `json:"name"`
-	CPUPercent    float64 `json:"cpu_percent"`
-	MemoryPercent float64 `json:"memory_percent"`
+type ProcessInfo struct {
+	Name        string  `json:"name"`
+	PID         int     `json:"pid"`
+	CPUPercent  float64 `json:"cpu_percent"`
+	MemoryUsage uint64  `json:"memory_usage"`
+	Status      string  `json:"status"`
+}
+
+type SystemProcessStats struct {
+	TotalCount       int           `json:"total_count"`
+	TotalCPUPercent  float64       `json:"total_cpu_percent"`
+	TotalMemoryUsage uint64        `json:"total_memory_usage"`
+	ProcessList      []ProcessInfo `json:"process_list"`
 }
 
 type CPUUsage struct {

@@ -78,3 +78,20 @@ kubectl apply -f infra/k8s/postgres-migrations-job.yaml
 kubectl get jobs postgres-migrations
 kubectl logs job/postgres-migrations
 ```
+
+# Pgadmin login
+
+## Main login
+
+Email: admin@admin.com
+Password: admin
+
+## Connecting to PostgreSQL
+
+When connecting to PostgreSQL from pgAdmin, use these connection details:
+
+Host: postgres-srv
+Port: 5432
+Database: logdb
+Username: postgres
+Password: mysecretpassword (from your postgres-secret)

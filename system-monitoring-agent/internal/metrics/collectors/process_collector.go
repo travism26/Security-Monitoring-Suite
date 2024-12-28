@@ -2,6 +2,7 @@
 package collectors
 
 import (
+	"github.com/travism26/shared-monitoring-libs/types"
 	"github.com/travism26/system-monitoring-agent/internal/core"
 )
 
@@ -28,29 +29,32 @@ func (c *ProcessCollector) Collect() (map[string]interface{}, error) {
 	var totalMemory uint64
 	processCount := len(processes)
 
-	processList := make([]map[string]interface{}, 0, processCount)
+	// Convert directly to ProcessInfo
+	processList := make([]types.ProcessInfo, 0, processCount)
 
 	for _, proc := range processes {
 		totalCPU += proc.CPUPercent
 		totalMemory += proc.MemoryUsage
 
-		// Create detailed process info
-		processInfo := map[string]interface{}{
-			"pid":          proc.PID,
-			"name":         proc.Name,
-			"cpu_percent":  proc.CPUPercent,
-			"memory_usage": proc.MemoryUsage,
-			"status":       proc.Status,
+		// Create ProcessInfo directly
+		processMetric := types.ProcessInfo{
+			Name:        proc.Name,
+			PID:         proc.PID,
+			CPUPercent:  proc.CPUPercent,
+			MemoryUsage: proc.MemoryUsage,
+			Status:      proc.Status,
 		}
-		processList = append(processList, processInfo)
+		processList = append(processList, processMetric)
 	}
 
-	return map[string]interface{}{
-		"processes": map[string]interface{}{
-			"total_count":        processCount,
-			"total_cpu_percent":  totalCPU,
-			"total_memory_usage": totalMemory,
-			"process_list":       processList,
+	result := map[string]interface{}{
+		"processes": types.SystemProcessStats{
+			TotalCount:       processCount,
+			TotalCPUPercent:  totalCPU,
+			TotalMemoryUsage: totalMemory,
+			ProcessList:      processList,
 		},
-	}, nil
+	}
+
+	return result, nil
 }

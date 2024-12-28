@@ -97,40 +97,34 @@ func (c *Consumer) Start(ctx context.Context) error {
 					log.Printf("Metadata processed - JSON string: %s", logEntry.MetadataStr)
 				}
 
-				if rawMsg.Metrics != nil {
-					metrics := rawMsg.Metrics.(map[string]interface{})
-					if processesData, ok := metrics["processes"].(map[string]interface{}); ok {
-						if processList, ok := processesData["process_list"].([]interface{}); ok {
-							var processes []domain.Process
-							for _, p := range processList {
-								proc := p.(map[string]interface{})
-								process := domain.Process{
-									ID:          uuid.New().String(),
-									LogID:       logEntry.ID,
-									Name:        proc["name"].(string),
-									PID:         int(proc["pid"].(float64)),
-									CPUPercent:  proc["cpu_percent"].(float64),
-									MemoryUsage: int64(proc["memory_usage"].(float64)),
-									Status:      proc["status"].(string),
-								}
-								processes = append(processes, process)
-							}
+				// Extract processes from the message
+				processesData := rawMsg.Processes.(map[string]interface{})
+				processList := processesData["process_list"].([]interface{})
 
-							if err := c.processRepository.StoreBatch(processes); err != nil {
-								log.Printf("Error storing processes: %v", err)
-							}
-						}
-					}
+				processes := make([]domain.Process, 0, len(processList))
+				for _, p := range processList {
+					proc := p.(map[string]interface{})
+					processes = append(processes, domain.Process{
+						ID:          uuid.New().String(),
+						LogID:       logEntry.ID, // Link to the parent log entry
+						Name:        proc["name"].(string),
+						PID:         int(proc["pid"].(float64)),
+						CPUPercent:  proc["cpu_percent"].(float64),
+						MemoryUsage: int64(proc["memory_usage"].(float64)),
+						Status:      proc["status"].(string),
+						Timestamp:   logEntry.Timestamp, // Use the same timestamp as the log entry
+					})
 				}
 
-				// Log final state before storage
-				log.Printf("Final logEntry state before storage - Metadata: %+v, MetadataStr: %q",
-					logEntry.Metadata, logEntry.MetadataStr)
-
-				// Store the log
+				// Store the log entry first
 				if err := c.logService.StoreLog(&logEntry); err != nil {
-					log.Printf("Error storing log: %v", err)
-					log.Printf("LogEntry at time of error: %+v", logEntry)
+					log.Printf("Error storing log entry: %v", err)
+					continue
+				}
+
+				// Store all processes in a single transaction
+				if err := c.processRepository.StoreBatch(processes); err != nil {
+					log.Printf("Error storing processes: %v", err)
 					continue
 				}
 

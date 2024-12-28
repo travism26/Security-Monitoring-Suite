@@ -18,5 +18,19 @@ export interface SystemMetrics extends Event {
       collector_count: number;
       errors?: string[];
     };
+    processes?: {
+      total_count: number;
+      total_cpu_percent: number;
+      total_memory_usage: number;
+      process_list: ProcessInfo[];
+    };
   };
+}
+
+export interface ProcessInfo {
+  name: string;
+  pid: number;
+  cpu_percent: number;
+  memory_usage: number;
+  status: string;
 }

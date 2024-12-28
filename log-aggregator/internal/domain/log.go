@@ -31,8 +31,14 @@ type Log struct {
 	Metadata    map[string]interface{} `json:"-"`
 	MetadataStr string                 `json:"metadata"`
 
-	// Processes associated with the log
-	Processes map[string]interface{} `json:"processes"`
+	// Total number of processes in the log
+	ProcessCount int `json:"process_count"`
+
+	// Total CPU usage percentage for all processes
+	TotalCPUPercent float64 `json:"total_cpu_percent"`
+
+	// Total memory usage for all processes
+	TotalMemoryUsage int64 `json:"total_memory_usage"`
 }
 
 // LogRepository defines the interface for storing and retrieving logs.

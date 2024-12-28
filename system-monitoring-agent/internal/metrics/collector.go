@@ -2,6 +2,7 @@
 package metrics
 
 import (
+	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -43,10 +44,18 @@ func (mc *MetricsCollector) Collect() types.MetricPayload {
 	now := time.Now()
 	metrics := make(map[string]interface{})
 	var collectionErrors []string
+	var processData interface{}
 
 	// Collect from each collector
 	for _, collector := range mc.collectors {
 		if data, err := collector.Collect(); err == nil {
+			// Special handling for process collector
+			if collector.Name() == "processes" {
+				fmt.Printf("mtravis - inside process collector\n")
+				processData = data["processes"]
+				continue
+			}
+			// Add other metrics to the metrics map
 			for k, v := range data {
 				metrics[k] = v
 			}
@@ -58,7 +67,6 @@ func (mc *MetricsCollector) Collect() types.MetricPayload {
 	// Analyze metrics for threats
 	threatIndicators := mc.analyzer.AnalyzeMetrics(metrics)
 
-	// Structure the response according to the API requirements
 	return types.MetricPayload{
 		Timestamp: now.UTC().Format(time.RFC3339),
 		Data: types.MetricData{
@@ -71,6 +79,7 @@ func (mc *MetricsCollector) Collect() types.MetricPayload {
 			},
 			Metrics:          metrics,
 			ThreatIndicators: threatIndicators,
+			Processes:        processData.(types.SystemProcessStats),
 			Metadata: types.MetadataInfo{
 				CollectionDuration: time.Since(now).String(),
 				CollectorCount:     len(mc.collectors),

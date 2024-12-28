@@ -118,10 +118,12 @@ func TestAgentStart(t *testing.T) {
 	agent := NewAgent(cfg, mc, exporters...)
 
 	// Run Start in a separate goroutine
-	go agent.Start()
+	done := make(chan struct{})
+	go agent.Start(done)
 
 	// Allow some time for the ticker to tick
 	time.Sleep(3 * time.Second)
+	close(done)
 
 	// Here you would typically check if the metrics were exported correctly.
 	// This might involve checking the output file or using a mock exporter.

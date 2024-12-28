@@ -21,8 +21,8 @@ func NewLogRepository(db *sql.DB) *LogRepository {
 
 func (r *LogRepository) Store(log *domain.Log) error {
 	query := `
-		INSERT INTO logs (id, timestamp, host, message, level, metadata, processes)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO logs (id, timestamp, host, message, level, metadata, process_count, total_cpu_percent, total_memory_usage)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
 	// Debug logging
@@ -43,7 +43,10 @@ func (r *LogRepository) Store(log *domain.Log) error {
 		log.Message,
 		log.Level,
 		log.MetadataStr,
-		log.Processes) // Add processes field
+		log.ProcessCount,
+		log.TotalCPUPercent,
+		log.TotalMemoryUsage,
+	)
 
 	if err != nil {
 		fmt.Printf("=== Error Details ===\n")
