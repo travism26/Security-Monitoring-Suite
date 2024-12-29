@@ -12,3 +12,9 @@ type Process struct {
 	Status      string    `json:"status"`
 	Timestamp   time.Time `json:"timestamp"`
 }
+
+type ProcessRepository interface {
+	Store(process *Process) error
+	FindByID(id string) (*Process, error)
+	List(limit, offset int) ([]*Process, error)
+}
