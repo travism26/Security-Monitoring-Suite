@@ -39,6 +39,121 @@ func NewConsumer(brokers []string, groupID, topic string, logService *service.Lo
 	}, nil
 }
 
+func (c *Consumer) processMessage(msg *sarama.ConsumerMessage) error {
+	// Log the raw message
+	log.Printf("Raw message received: %s", string(msg.Value))
+
+	rawMsg, err := c.unmarshalRawMessage(msg.Value)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal message: %w", err)
+	}
+
+	logEntry, err := c.createLogEntry(rawMsg)
+	if err != nil {
+		return fmt.Errorf("failed to create log entry: %w", err)
+	}
+
+	processes, err := c.extractProcesses(rawMsg, logEntry.ID)
+	if err != nil {
+		return fmt.Errorf("failed to extract processes: %w", err)
+	}
+
+	if err := c.storeData(logEntry, processes); err != nil {
+		return fmt.Errorf("failed to store data: %w", err)
+	}
+
+	log.Printf("Successfully processed message from topic '%s', partition: %d, offset: %d",
+		msg.Topic, msg.Partition, msg.Offset)
+	return nil
+}
+
+func (c *Consumer) unmarshalRawMessage(msgValue []byte) (*struct {
+	HostInfo         interface{} `json:"host_info"`
+	Metrics          interface{} `json:"metrics"`
+	ThreatIndicators interface{} `json:"threat_indicators"`
+	Metadata         interface{} `json:"metadata"`
+	Processes        interface{} `json:"processes"`
+}, error) {
+	var rawMsg struct {
+		HostInfo         interface{} `json:"host_info"`
+		Metrics          interface{} `json:"metrics"`
+		ThreatIndicators interface{} `json:"threat_indicators"`
+		Metadata         interface{} `json:"metadata"`
+		Processes        interface{} `json:"processes"`
+	}
+	if err := json.Unmarshal(msgValue, &rawMsg); err != nil {
+		return nil, err
+	}
+	return &rawMsg, nil
+}
+
+func (c *Consumer) createLogEntry(rawMsg *struct {
+	HostInfo         interface{} `json:"host_info"`
+	Metrics          interface{} `json:"metrics"`
+	ThreatIndicators interface{} `json:"threat_indicators"`
+	Metadata         interface{} `json:"metadata"`
+	Processes        interface{} `json:"processes"`
+}) (*domain.Log, error) {
+	logEntry := &domain.Log{
+		ID:        uuid.New().String(),
+		Timestamp: time.Now(),
+		Host:      rawMsg.HostInfo.(map[string]interface{})["hostname"].(string),
+		Message: fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%",
+			rawMsg.Metrics.(map[string]interface{})["cpu_usage"].(float64),
+			rawMsg.Metrics.(map[string]interface{})["memory_usage_percent"].(float64)),
+		Level: "INFO",
+	}
+
+	if rawMsg.Metadata != nil {
+		metadataJSON, err := json.Marshal(rawMsg.Metadata)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling metadata: %w", err)
+		}
+		logEntry.MetadataStr = string(metadataJSON)
+	}
+
+	return logEntry, nil
+}
+
+func (c *Consumer) extractProcesses(rawMsg *struct {
+	HostInfo         interface{} `json:"host_info"`
+	Metrics          interface{} `json:"metrics"`
+	ThreatIndicators interface{} `json:"threat_indicators"`
+	Metadata         interface{} `json:"metadata"`
+	Processes        interface{} `json:"processes"`
+}, logID string) ([]domain.Process, error) {
+	processesData := rawMsg.Processes.(map[string]interface{})
+	processList := processesData["process_list"].([]interface{})
+
+	processes := make([]domain.Process, 0, len(processList))
+	for _, p := range processList {
+		proc := p.(map[string]interface{})
+		processes = append(processes, domain.Process{
+			ID:          uuid.New().String(),
+			LogID:       logID,
+			Name:        proc["name"].(string),
+			PID:         int(proc["pid"].(float64)),
+			CPUPercent:  proc["cpu_percent"].(float64),
+			MemoryUsage: int64(proc["memory_usage"].(float64)),
+			Status:      proc["status"].(string),
+			Timestamp:   time.Now(),
+		})
+	}
+	return processes, nil
+}
+
+func (c *Consumer) storeData(logEntry *domain.Log, processes []domain.Process) error {
+	if err := c.logService.StoreLog(logEntry); err != nil {
+		return fmt.Errorf("error storing log entry: %w", err)
+	}
+
+	if err := c.processRepository.StoreBatch(processes); err != nil {
+		return fmt.Errorf("error storing processes: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Consumer) Start(ctx context.Context) error {
 	partitions, err := c.consumer.Partitions(c.topic)
 	if err != nil {
@@ -54,82 +169,9 @@ func (c *Consumer) Start(ctx context.Context) error {
 		go func(pc sarama.PartitionConsumer) {
 			defer pc.Close()
 			for msg := range pc.Messages() {
-				// Log the raw message
-				log.Printf("Raw message received: %s", string(msg.Value))
-
-				// First unmarshal into a temporary struct that matches the JSON structure
-				var rawMsg struct {
-					HostInfo         interface{} `json:"host_info"`
-					Metrics          interface{} `json:"metrics"`
-					ThreatIndicators interface{} `json:"threat_indicators"`
-					Metadata         interface{} `json:"metadata"`
-					Processes        interface{} `json:"processes"`
+				if err := c.processMessage(msg); err != nil {
+					log.Printf("Error processing message: %v", err)
 				}
-
-				if err := json.Unmarshal(msg.Value, &rawMsg); err != nil {
-					log.Printf("Error unmarshaling message: %v", err)
-					continue
-				}
-
-				// Create the log entry
-				logEntry := domain.Log{
-					ID:        uuid.New().String(),
-					Timestamp: time.Now(),
-					Host:      rawMsg.HostInfo.(map[string]interface{})["hostname"].(string),
-					Message: fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%",
-						rawMsg.Metrics.(map[string]interface{})["cpu_usage"].(float64),
-						rawMsg.Metrics.(map[string]interface{})["memory_usage_percent"].(float64)),
-					Level: "INFO",
-				}
-
-				// Log initial state
-				log.Printf("Initial logEntry state - Metadata: %+v, MetadataStr: %q",
-					rawMsg.Metadata, logEntry.MetadataStr)
-
-				// Handle metadata separately
-				if rawMsg.Metadata != nil {
-					metadataJSON, err := json.Marshal(rawMsg.Metadata)
-					if err != nil {
-						log.Printf("Error marshaling metadata: %v", err)
-						continue
-					}
-					logEntry.MetadataStr = string(metadataJSON)
-					log.Printf("Metadata processed - JSON string: %s", logEntry.MetadataStr)
-				}
-
-				// Extract processes from the message
-				processesData := rawMsg.Processes.(map[string]interface{})
-				processList := processesData["process_list"].([]interface{})
-
-				processes := make([]domain.Process, 0, len(processList))
-				for _, p := range processList {
-					proc := p.(map[string]interface{})
-					processes = append(processes, domain.Process{
-						ID:          uuid.New().String(),
-						LogID:       logEntry.ID, // Link to the parent log entry
-						Name:        proc["name"].(string),
-						PID:         int(proc["pid"].(float64)),
-						CPUPercent:  proc["cpu_percent"].(float64),
-						MemoryUsage: int64(proc["memory_usage"].(float64)),
-						Status:      proc["status"].(string),
-						Timestamp:   logEntry.Timestamp, // Use the same timestamp as the log entry
-					})
-				}
-
-				// Store the log entry first
-				if err := c.logService.StoreLog(&logEntry); err != nil {
-					log.Printf("Error storing log entry: %v", err)
-					continue
-				}
-
-				// Store all processes in a single transaction
-				if err := c.processRepository.StoreBatch(processes); err != nil {
-					log.Printf("Error storing processes: %v", err)
-					continue
-				}
-
-				log.Printf("Successfully processed message from topic '%s', partition: %d, offset: %d",
-					msg.Topic, msg.Partition, msg.Offset)
 			}
 		}(pc)
 	}
