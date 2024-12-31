@@ -94,6 +94,8 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 }) (*domain.Log, error) {
+	processes := rawMsg.Processes.(map[string]interface{})
+
 	logEntry := &domain.Log{
 		ID:        uuid.New().String(),
 		Timestamp: time.Now(),
@@ -101,7 +103,10 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 		Message: fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%",
 			rawMsg.Metrics.(map[string]interface{})["cpu_usage"].(float64),
 			rawMsg.Metrics.(map[string]interface{})["memory_usage_percent"].(float64)),
-		Level: "INFO",
+		Level:            "INFO",
+		ProcessCount:     int(processes["total_count"].(float64)),
+		TotalCPUPercent:  processes["total_cpu_percent"].(float64),
+		TotalMemoryUsage: int64(processes["total_memory_usage"].(float64)),
 	}
 
 	if rawMsg.Metadata != nil {

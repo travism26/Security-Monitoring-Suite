@@ -21,7 +21,10 @@ func NewLogRepository(db *sql.DB) *LogRepository {
 
 func (r *LogRepository) Store(log *domain.Log) error {
 	query := `
-		INSERT INTO logs (id, timestamp, host, message, level, metadata, process_count, total_cpu_percent, total_memory_usage)
+		INSERT INTO logs (
+			id, timestamp, host, message, level, metadata,
+			process_count, total_cpu_percent, total_memory_usage
+		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 	`
 
@@ -32,8 +35,9 @@ func (r *LogRepository) Store(log *domain.Log) error {
 	fmt.Printf("Host: %s\n", log.Host)
 	fmt.Printf("Message: %s\n", log.Message)
 	fmt.Printf("Level: %s\n", log.Level)
-	fmt.Printf("MetadataStr (type: %T): %s\n", log.MetadataStr, log.MetadataStr)
-	fmt.Printf("Raw Metadata (type: %T): %+v\n", log.Metadata, log.Metadata)
+	fmt.Printf("Process Count: %d\n", log.ProcessCount)
+	fmt.Printf("Total CPU Percent: %.2f\n", log.TotalCPUPercent)
+	fmt.Printf("Total Memory Usage: %d\n", log.TotalMemoryUsage)
 	fmt.Printf("=====================\n")
 
 	_, err := r.db.Exec(query,
@@ -49,16 +53,8 @@ func (r *LogRepository) Store(log *domain.Log) error {
 	)
 
 	if err != nil {
-		fmt.Printf("=== Error Details ===\n")
-		fmt.Printf("Error: %v\n", err)
-		fmt.Printf("Error Type: %T\n", err)
-		fmt.Printf("==================\n")
 		return fmt.Errorf("failed to store log: %w", err)
 	}
-
-	fmt.Printf("=== Success ===\n")
-	fmt.Printf("Successfully stored log with ID: %s\n", log.ID)
-	fmt.Printf("==============\n")
 
 	return nil
 }

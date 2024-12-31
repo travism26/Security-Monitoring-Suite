@@ -5,6 +5,9 @@ CREATE TABLE IF NOT EXISTS logs (
     message TEXT NOT NULL,
     level VARCHAR(50) NOT NULL,
     metadata JSONB,
+    process_count INTEGER,
+    total_cpu_percent FLOAT,
+    total_memory_usage BIGINT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

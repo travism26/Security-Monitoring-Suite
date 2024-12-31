@@ -53,6 +53,26 @@ func HighCPUScenario() types.MetricPayload {
 					Metadata:    types.Metadata{Tags: []string{"network_activity"}},
 				},
 			},
+			Processes: types.SystemProcessStats{
+				TotalCount:       1,
+				TotalMemoryUsage: 20.0,
+				ProcessList: []types.ProcessInfo{
+					{
+						Name:        "malicious.exe",
+						PID:         12345,
+						CPUPercent:  80.0,
+						MemoryUsage: 20.0,
+						Status:      "running",
+					},
+					{
+						Name:        "malicious_process_2.exe",
+						PID:         12346,
+						CPUPercent:  50.0,
+						MemoryUsage: 10.0,
+						Status:      "running",
+					},
+				},
+			},
 		},
 	}
 }
