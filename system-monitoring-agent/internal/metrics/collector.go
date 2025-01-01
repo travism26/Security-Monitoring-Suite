@@ -2,7 +2,6 @@
 package metrics
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"time"
@@ -51,7 +50,6 @@ func (mc *MetricsCollector) Collect() types.MetricPayload {
 		if data, err := collector.Collect(); err == nil {
 			// Special handling for process collector
 			if collector.Name() == "processes" {
-				fmt.Printf("mtravis - inside process collector\n")
 				processData = data["processes"]
 				continue
 			}
