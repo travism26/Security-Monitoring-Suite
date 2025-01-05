@@ -18,6 +18,12 @@ All notable changes to the Log Aggregator project will be documented in this fil
 - RESTful API endpoints for alert management
 - Database schema for alerts and relationships
 - Integration with Kafka consumer for metric processing
+- Improved error handling in Kafka consumer
+- Added null checks for process data
+- Added comprehensive test suite for Kafka consumer
+- Added FindByLogID method to ProcessRepository
+- Implemented interface-based design for better testing
+- Added real payload-based test cases
 
 ### Work in Progress
 

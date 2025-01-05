@@ -97,3 +97,51 @@ func (r *ProcessRepository) StoreBatch(processes []domain.Process) error {
 
 	return nil
 }
+
+func (r *ProcessRepository) FindByLogID(logID string) ([]domain.Process, error) {
+	query := `
+		SELECT 
+			id,
+			log_id,
+			name,
+			pid,
+			cpu_percent,
+			memory_usage,
+			status,
+			created_at
+		FROM process_logs
+		WHERE log_id = $1
+		ORDER BY created_at DESC
+	`
+
+	rows, err := r.db.Query(query, logID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query processes: %w", err)
+	}
+	defer rows.Close()
+
+	var processes []domain.Process
+	for rows.Next() {
+		var process domain.Process
+		err := rows.Scan(
+			&process.ID,
+			&process.LogID,
+			&process.Name,
+			&process.PID,
+			&process.CPUPercent,
+			&process.MemoryUsage,
+			&process.Status,
+			&process.Timestamp,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan process row: %w", err)
+		}
+		processes = append(processes, process)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating process rows: %w", err)
+	}
+
+	return processes, nil
+}

@@ -8,8 +8,6 @@ import (
 	"time"
 
 	"github.com/travism26/log-aggregator/internal/domain"
-	"github.com/travism26/log-aggregator/internal/repository/postgres"
-	"github.com/travism26/log-aggregator/internal/service"
 
 	"github.com/IBM/sarama"
 	"github.com/google/uuid"
@@ -18,12 +16,12 @@ import (
 type Consumer struct {
 	consumer          sarama.Consumer
 	topic             string
-	logService        *service.LogService
-	alertService      *service.AlertService
-	processRepository *postgres.ProcessRepository
+	logService        LogService
+	alertService      AlertService
+	processRepository ProcessRepository
 }
 
-func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService, alertService *service.AlertService, processRepo *postgres.ProcessRepository) (*Consumer, error) {
+func NewConsumer(brokers []string, groupID, topic string, logService LogService, alertService AlertService, processRepo ProcessRepository) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
@@ -43,7 +41,7 @@ func NewConsumer(brokers []string, groupID, topic string, logService *service.Lo
 
 func (c *Consumer) processMessage(msg *sarama.ConsumerMessage) error {
 	// Log the raw message
-	log.Printf("Raw message received: %s", string(msg.Value))
+	// log.Printf("Raw message received: %s", string(msg.Value))
 
 	rawMsg, err := c.unmarshalRawMessage(msg.Value)
 	if err != nil {
@@ -101,19 +99,52 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 }) (*domain.Log, error) {
-	processes := rawMsg.Processes.(map[string]interface{})
+	hostInfo, ok := rawMsg.HostInfo.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid host_info format")
+	}
+
+	hostname, ok := hostInfo["hostname"].(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid hostname format")
+	}
+
+	metrics, ok := rawMsg.Metrics.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid metrics format")
+	}
+
+	cpuUsage, ok := metrics["cpu_usage"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid cpu_usage format")
+	}
+
+	memoryUsagePercent, ok := metrics["memory_usage_percent"].(float64)
+	if !ok {
+		return nil, fmt.Errorf("invalid memory_usage_percent format")
+	}
 
 	logEntry := &domain.Log{
 		ID:        uuid.New().String(),
 		Timestamp: time.Now(),
-		Host:      rawMsg.HostInfo.(map[string]interface{})["hostname"].(string),
-		Message: fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%",
-			rawMsg.Metrics.(map[string]interface{})["cpu_usage"].(float64),
-			rawMsg.Metrics.(map[string]interface{})["memory_usage_percent"].(float64)),
-		Level:            "INFO",
-		ProcessCount:     int(processes["total_count"].(float64)),
-		TotalCPUPercent:  processes["total_cpu_percent"].(float64),
-		TotalMemoryUsage: int64(processes["total_memory_usage"].(float64)),
+		Host:      hostname,
+		Message:   fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%", cpuUsage, memoryUsagePercent),
+		Level:     "INFO",
+	}
+
+	// Handle processes data if available
+	if rawMsg.Processes != nil {
+		if processes, ok := rawMsg.Processes.(map[string]interface{}); ok {
+			if totalCount, ok := processes["total_count"].(float64); ok {
+				logEntry.ProcessCount = int(totalCount)
+			}
+			if totalCPU, ok := processes["total_cpu_percent"].(float64); ok {
+				logEntry.TotalCPUPercent = totalCPU
+			}
+			if totalMemory, ok := processes["total_memory_usage"].(float64); ok {
+				logEntry.TotalMemoryUsage = int64(totalMemory)
+			}
+		}
 	}
 
 	if rawMsg.Metadata != nil {
@@ -134,8 +165,21 @@ func (c *Consumer) extractProcesses(rawMsg *struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 }, logID string) ([]domain.Process, error) {
-	processesData := rawMsg.Processes.(map[string]interface{})
-	processList := processesData["process_list"].([]interface{})
+	// Handle case where Processes is null
+	if rawMsg.Processes == nil {
+		return []domain.Process{}, nil
+	}
+
+	processesData, ok := rawMsg.Processes.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid processes data format")
+	}
+
+	processList, ok := processesData["process_list"].([]interface{})
+	if !ok {
+		// If process_list is nil or not an array, return empty slice
+		return []domain.Process{}, nil
+	}
 
 	processes := make([]domain.Process, 0, len(processList))
 	for _, p := range processList {
