@@ -12,13 +12,20 @@ All notable changes to the Log Aggregator project will be documented in this fil
 - Process tracking and storage capabilities
 - Alert domain model with severity levels
 - PostgreSQL integration for log storage
+- Alert system implementation with rule-based detection
+- Alert repository with PostgreSQL storage
+- Alert service with configurable thresholds
+- RESTful API endpoints for alert management
+- Database schema for alerts and relationships
+- Integration with Kafka consumer for metric processing
 
 ### Work in Progress
 
-- Alert system implementation
-- REST API development
 - Performance optimizations
 - Monitoring and metrics setup
+- Authentication and authorization
+- Advanced alert correlation
+- Dashboard integration
 
 ## [0.1.0] - 2024-01-17
 
@@ -47,6 +54,7 @@ All notable changes to the Log Aggregator project will be documented in this fil
 ## Migration Notes
 
 - Initial database schema in migrations/001_initial_schema.sql
+- Alert system schema in migrations/002_alerts_schema.sql
 - Kafka topics need to be created before running the service
 - PostgreSQL connection requires proper credentials in config
 

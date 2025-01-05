@@ -19,10 +19,11 @@ type Consumer struct {
 	consumer          sarama.Consumer
 	topic             string
 	logService        *service.LogService
+	alertService      *service.AlertService
 	processRepository *postgres.ProcessRepository
 }
 
-func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService, processRepo *postgres.ProcessRepository) (*Consumer, error) {
+func NewConsumer(brokers []string, groupID, topic string, logService *service.LogService, alertService *service.AlertService, processRepo *postgres.ProcessRepository) (*Consumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
@@ -35,6 +36,7 @@ func NewConsumer(brokers []string, groupID, topic string, logService *service.Lo
 		consumer:          consumer,
 		topic:             topic,
 		logService:        logService,
+		alertService:      alertService,
 		processRepository: processRepo,
 	}, nil
 }
@@ -60,6 +62,11 @@ func (c *Consumer) processMessage(msg *sarama.ConsumerMessage) error {
 
 	if err := c.storeData(logEntry, processes); err != nil {
 		return fmt.Errorf("failed to store data: %w", err)
+	}
+
+	// Process metrics for alerts
+	if err := c.alertService.ProcessMetrics(logEntry); err != nil {
+		return fmt.Errorf("failed to process metrics for alerts: %w", err)
 	}
 
 	log.Printf("Successfully processed message from topic '%s', partition: %d, offset: %d",

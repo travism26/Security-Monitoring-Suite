@@ -63,9 +63,11 @@ func main() {
 	// Initialize repositories
 	logRepo := postgres.NewLogRepository(db)
 	processRepo := postgres.NewProcessRepository(db)
+	alertRepo := postgres.NewAlertRepository(db)
 
 	// Initialize services
 	logService := service.NewLogService(logRepo)
+	alertService := service.NewAlertService(alertRepo)
 
 	// Start Kafka consumer
 	consumer, err := kafka.NewConsumer(
@@ -73,6 +75,7 @@ func main() {
 		cfg.Kafka.GroupID,
 		cfg.Kafka.Topic,
 		logService,
+		alertService,
 		processRepo,
 	)
 	if err != nil {
@@ -101,7 +104,8 @@ func main() {
 
 	// Register API routes
 	logHandler := handler.NewLogHandler(logService)
-	handler.RegisterRoutes(router, logHandler)
+	alertHandler := handler.NewAlertHandler(alertService)
+	handler.RegisterAPIRoutes(router, logHandler, alertHandler)
 
 	// Create HTTP server with timeout configurations
 	srv := &http.Server{
