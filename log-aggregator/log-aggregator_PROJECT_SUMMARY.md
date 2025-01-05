@@ -66,7 +66,7 @@ The **Log Aggregator with SIEM-Like Features** is a system designed to pull syst
 ## 3. Data Flow Architecture
 
 ```mermaid
-graph TD
+flowchart TD
     A[System-Monitoring-Agent(s)] -->|Produce Metrics| B[Kafka Topic(s)]
     B -->|Consume Messages| C[Log Aggregator]
     C -->|Store Logs/Alerts| D[PostgreSQL]
