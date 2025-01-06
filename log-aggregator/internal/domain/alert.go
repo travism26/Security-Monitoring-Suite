@@ -11,6 +11,16 @@ const (
 	SeverityCritical AlertSeverity = "CRITICAL"
 )
 
+// IsValid checks if the alert severity is a valid value
+func (s AlertSeverity) IsValid() bool {
+	switch s {
+	case SeverityLow, SeverityMedium, SeverityHigh, SeverityCritical:
+		return true
+	default:
+		return false
+	}
+}
+
 type AlertStatus string
 
 const (
@@ -18,6 +28,16 @@ const (
 	StatusResolved AlertStatus = "RESOLVED"
 	StatusIgnored  AlertStatus = "IGNORED"
 )
+
+// IsValid checks if the alert status is a valid value
+func (s AlertStatus) IsValid() bool {
+	switch s {
+	case StatusOpen, StatusResolved, StatusIgnored:
+		return true
+	default:
+		return false
+	}
+}
 
 type Alert struct {
 	ID          string        `json:"id"`

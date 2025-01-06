@@ -109,7 +109,9 @@ func main() {
 	// Register API routes
 	logHandler := handler.NewLogHandler(logService)
 	alertHandler := handler.NewAlertHandler(alertService)
-	handler.RegisterAPIRoutes(router, logHandler, alertHandler)
+	handler.RegisterAPIRoutes(router, logHandler, alertHandler, handler.APIConfig{
+		APIKeys: cfg.API.Keys,
+	})
 
 	// Create HTTP server with timeout configurations
 	srv := &http.Server{

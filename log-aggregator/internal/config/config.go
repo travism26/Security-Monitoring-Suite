@@ -15,6 +15,9 @@ type Config struct {
 		Port string `mapstructure:"port"`
 		Host string `mapstructure:"host"`
 	}
+	API struct {
+		Keys []string `mapstructure:"api_keys"`
+	}
 	Kafka struct {
 		Brokers []string `mapstructure:"brokers"`
 		Topic   string   `mapstructure:"topic"`
@@ -43,6 +46,7 @@ func LoadConfig() (*Config, error) {
 	// Set default values
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("server.host", "0.0.0.0")
+	viper.SetDefault("api.api_keys", []string{"dev-api-key"}) // Default API key for development
 	viper.SetDefault("kafka.topic", "logs")
 	viper.SetDefault("kafka.groupid", "log-aggregator")
 	viper.SetDefault("logservice.environment", "production")
@@ -57,6 +61,7 @@ func LoadConfig() (*Config, error) {
 	// Map specific environment variables
 	viper.BindEnv("server.port", "LOG_AGG_SERVER_PORT")
 	viper.BindEnv("server.host", "LOG_AGG_SERVER_HOST")
+	viper.BindEnv("api.api_keys", "LOG_AGG_API_KEYS") // Comma-separated list of API keys
 	viper.BindEnv("kafka.brokers", "KAFKA_BROKERS")
 	viper.BindEnv("kafka.topic", "LOG_AGG_KAFKA_TOPIC")
 	viper.BindEnv("kafka.group_id", "LOG_AGG_KAFKA_GROUP_ID")
@@ -81,6 +86,15 @@ func LoadConfig() (*Config, error) {
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	// Process API keys from environment variable if present
+	if apiKeys := viper.GetString("api.api_keys"); apiKeys != "" {
+		config.API.Keys = strings.Split(apiKeys, ",")
+		// Trim spaces from each key
+		for i := range config.API.Keys {
+			config.API.Keys[i] = strings.TrimSpace(config.API.Keys[i])
+		}
 	}
 
 	// Validate config
@@ -116,6 +130,9 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.LogService.Component == "" {
 		return fmt.Errorf("log service component name is required")
+	}
+	if len(cfg.API.Keys) == 0 {
+		return fmt.Errorf("at least one API key is required")
 	}
 	return nil
 }

@@ -23,14 +23,30 @@ var DefaultThresholds = AlertThresholds{
 }
 
 type AlertService struct {
-	repo       domain.AlertRepository
-	thresholds AlertThresholds
+	repo         domain.AlertRepository
+	thresholds   AlertThresholds
+	systemMemory int64
+	timeNowFn    func() time.Time
 }
 
-func NewAlertService(repo domain.AlertRepository) *AlertService {
+// AlertServiceConfig allows customizing service behavior
+type AlertServiceConfig struct {
+	SystemMemory int64
+	TimeNowFn    func() time.Time
+}
+
+func NewAlertService(repo domain.AlertRepository, config *AlertServiceConfig) *AlertService {
+	if config == nil {
+		config = &AlertServiceConfig{
+			SystemMemory: 16 * 1024 * 1024 * 1024, // 16GB default
+			TimeNowFn:    time.Now,
+		}
+	}
 	return &AlertService{
-		repo:       repo,
-		thresholds: DefaultThresholds,
+		repo:         repo,
+		thresholds:   DefaultThresholds,
+		systemMemory: config.SystemMemory,
+		timeNowFn:    config.TimeNowFn,
 	}
 }
 
@@ -114,7 +130,7 @@ func (s *AlertService) createAlert(
 	relatedLogs []string,
 	metadata map[string]interface{},
 ) *domain.Alert {
-	now := time.Now()
+	now := s.timeNowFn()
 	return &domain.Alert{
 		ID:          uuid.New().String(),
 		Title:       title,
@@ -129,28 +145,29 @@ func (s *AlertService) createAlert(
 	}
 }
 
-// getSystemTotalMemory returns the total system memory in bytes
-// This is a placeholder - in a real implementation, this would get the actual system memory
+// getSystemTotalMemory returns the configured system memory in bytes
 func (s *AlertService) getSystemTotalMemory() int64 {
-	return 16 * 1024 * 1024 * 1024 // 16GB as example
+	return s.systemMemory
 }
 
 // UpdateAlertStatus updates the status of an alert
 func (s *AlertService) UpdateAlertStatus(id string, status domain.AlertStatus) error {
-	alert, err := s.repo.FindByID(id)
+	existingAlert, err := s.repo.FindByID(id)
 	if err != nil {
 		return fmt.Errorf("failed to find alert: %w", err)
 	}
 
-	alert.Status = status
-	alert.UpdatedAt = time.Now()
+	// Create a copy of the alert to avoid modifying the original
+	updatedAlert := *existingAlert
+	updatedAlert.Status = status
+	updatedAlert.UpdatedAt = s.timeNowFn()
 
 	if status == domain.StatusResolved {
-		now := time.Now()
-		alert.ResolvedAt = &now
+		now := s.timeNowFn()
+		updatedAlert.ResolvedAt = &now
 	}
 
-	return s.repo.Update(alert)
+	return s.repo.Update(&updatedAlert)
 }
 
 // GetAlert retrieves an alert by ID
@@ -171,4 +188,57 @@ func (s *AlertService) ListAlertsByStatus(status domain.AlertStatus, limit, offs
 // ListAlertsBySeverity retrieves alerts filtered by severity
 func (s *AlertService) ListAlertsBySeverity(severity domain.AlertSeverity, limit, offset int) ([]*domain.Alert, error) {
 	return s.repo.FindBySeverity(severity, limit, offset)
+}
+
+// AlertTrends represents trend analysis data for alerts
+type AlertTrends struct {
+	TotalAlerts      int            `json:"total_alerts"`
+	AlertsBySeverity map[string]int `json:"alerts_by_severity"`
+	AlertsByStatus   map[string]int `json:"alerts_by_status"`
+	TimeDistribution map[string]int `json:"time_distribution"` // Hourly distribution
+	TopSources       map[string]int `json:"top_sources"`
+}
+
+// GetAlertTrends analyzes alerts within a time range to provide trend information
+func (s *AlertService) GetAlertTrends(start, end time.Time) (*AlertTrends, error) {
+	// Get all alerts within the time range
+	// Note: This is a simplified implementation. In production, you'd want to:
+	// 1. Add a repository method to get alerts by time range
+	// 2. Add proper pagination to handle large datasets
+	// 3. Potentially use database aggregations for better performance
+	alerts, err := s.repo.List(1000, 0) // Get last 1000 alerts as a sample
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve alerts: %w", err)
+	}
+
+	trends := &AlertTrends{
+		AlertsBySeverity: make(map[string]int),
+		AlertsByStatus:   make(map[string]int),
+		TimeDistribution: make(map[string]int),
+		TopSources:       make(map[string]int),
+	}
+
+	for _, alert := range alerts {
+		// Only consider alerts within the time range
+		if alert.CreatedAt.Before(start) || alert.CreatedAt.After(end) {
+			continue
+		}
+
+		trends.TotalAlerts++
+
+		// Count by severity
+		trends.AlertsBySeverity[string(alert.Severity)]++
+
+		// Count by status
+		trends.AlertsByStatus[string(alert.Status)]++
+
+		// Count by hour of day (for time distribution analysis)
+		hour := alert.CreatedAt.Format("15:00")
+		trends.TimeDistribution[hour]++
+
+		// Count by source
+		trends.TopSources[alert.Source]++
+	}
+
+	return trends, nil
 }
