@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 // Package domain contains the core business logic and entities of the application.
 // It defines the central types and interfaces that other packages will implement.
@@ -39,6 +41,40 @@ type Log struct {
 
 	// Total memory usage for all processes
 	TotalMemoryUsage int64 `json:"total_memory_usage"`
+
+	// Enrichment fields
+	Environment    string    `json:"environment"`     // e.g., production, staging, development
+	Application    string    `json:"application"`     // Application name
+	Component      string    `json:"component"`       // Component within the application
+	CorrelationID  string    `json:"correlation_id"`  // For tracking related logs
+	Tags           []string  `json:"tags"`            // Custom tags for categorization
+	EnrichedAt     time.Time `json:"enriched_at"`     // When the log was enriched
+	ProcessedCount int       `json:"processed_count"` // Number of processing attempts
+}
+
+// EnrichLog adds additional context and metadata to the log entry
+func (l *Log) EnrichLog(env, app, component string) {
+	l.Environment = env
+	l.Application = app
+	l.Component = component
+	l.EnrichedAt = time.Now()
+
+	// Add standard tags based on existing data
+	l.Tags = append(l.Tags,
+		"host:"+l.Host,
+		"level:"+l.Level,
+		"env:"+env,
+	)
+
+	// Add process-related metadata
+	if l.Metadata == nil {
+		l.Metadata = make(map[string]interface{})
+	}
+	l.Metadata["process_metrics"] = map[string]interface{}{
+		"process_count":     l.ProcessCount,
+		"total_cpu_percent": l.TotalCPUPercent,
+		"total_memory":      l.TotalMemoryUsage,
+	}
 }
 
 // LogRepository defines the interface for storing and retrieving logs.
@@ -50,6 +86,10 @@ type LogRepository interface {
 	// Store saves a single log entry to the database
 	Store(log *Log) error
 
+	// StoreBatch saves multiple log entries to the database in a single transaction
+	// This is more efficient than storing logs one by one when processing multiple logs
+	StoreBatch(logs []*Log) error
+
 	// FindByID retrieves a specific log entry by its ID
 	FindByID(id string) (*Log, error)
 
@@ -57,4 +97,8 @@ type LogRepository interface {
 	// limit: maximum number of logs to return
 	// offset: number of logs to skip
 	List(limit, offset int) ([]*Log, error)
+
+	// ListByTimeRange retrieves logs within a specific time range with pagination
+	// This is useful for querying logs within a specific window
+	ListByTimeRange(start, end time.Time, limit, offset int) ([]*Log, error)
 }

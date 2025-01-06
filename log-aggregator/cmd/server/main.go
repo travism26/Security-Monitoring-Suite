@@ -66,7 +66,11 @@ func main() {
 	alertRepo := postgres.NewAlertRepository(db)
 
 	// Initialize services
-	logService := service.NewLogService(logRepo)
+	logService := service.NewLogService(logRepo, service.LogServiceConfig{
+		Environment: cfg.LogService.Environment,
+		Application: cfg.LogService.Application,
+		Component:   cfg.LogService.Component,
+	})
 	alertService := service.NewAlertService(alertRepo)
 
 	// Start Kafka consumer

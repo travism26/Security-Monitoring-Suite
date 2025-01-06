@@ -27,6 +27,11 @@ type Config struct {
 		Password string `mapstructure:"password"`
 		Name     string `mapstructure:"name"`
 	}
+	LogService struct {
+		Environment string `mapstructure:"environment"`
+		Application string `mapstructure:"application"`
+		Component   string `mapstructure:"component"`
+	}
 }
 
 // LoadConfig reads configuration from environment variables or config file
@@ -40,6 +45,9 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("server.host", "0.0.0.0")
 	viper.SetDefault("kafka.topic", "logs")
 	viper.SetDefault("kafka.groupid", "log-aggregator")
+	viper.SetDefault("logservice.environment", "production")
+	viper.SetDefault("logservice.application", "log-aggregator")
+	viper.SetDefault("logservice.component", "log-service")
 
 	// Map environment variables
 	viper.SetEnvPrefix("LOG_AGG") // prefix for environment variables
@@ -57,6 +65,9 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("database.user", "POSTGRES_USER")
 	viper.BindEnv("database.password", "POSTGRES_PASSWORD")
 	viper.BindEnv("database.name", "POSTGRES_DB")
+	viper.BindEnv("logservice.environment", "LOG_AGG_ENV")
+	viper.BindEnv("logservice.application", "LOG_AGG_APP")
+	viper.BindEnv("logservice.component", "LOG_AGG_COMPONENT")
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -96,6 +107,15 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.Kafka.GroupID == "" {
 		return fmt.Errorf("kafka group ID is required")
+	}
+	if cfg.LogService.Environment == "" {
+		return fmt.Errorf("log service environment is required")
+	}
+	if cfg.LogService.Application == "" {
+		return fmt.Errorf("log service application name is required")
+	}
+	if cfg.LogService.Component == "" {
+		return fmt.Errorf("log service component name is required")
 	}
 	return nil
 }
