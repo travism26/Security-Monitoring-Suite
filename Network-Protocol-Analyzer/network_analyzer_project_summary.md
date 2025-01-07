@@ -37,7 +37,7 @@ The **Network Protocol Analyzer** is a lightweight tool designed to monitor and 
 
 ## 3. Data Flow Architecture
 
-```mirmaid
+```mermaid
 graph TD
     A[Network Interface] -->|Capture Packets| B[Packet Processor]
     B -->|Filter/Analyze| C[Rules Engine]

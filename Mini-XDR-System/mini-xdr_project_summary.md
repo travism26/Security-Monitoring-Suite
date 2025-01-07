@@ -53,7 +53,7 @@ The **Mini XDR System** (Extended Detection and Response) is a lightweight, exte
 
 ## 3. Data Flow Architecture
 
-```mirmaid
+```mermaid
 graph TD
     A[System Logs] -->|Produce Events| B[Kafka Topic]
     C[Network Traffic] -->|Produce Events| B
