@@ -71,7 +71,10 @@ func main() {
 		Application: cfg.LogService.Application,
 		Component:   cfg.LogService.Component,
 	})
-	alertService := service.NewAlertService(alertRepo)
+	alertService := service.NewAlertService(alertRepo, &service.AlertServiceConfig{
+		SystemMemory: 16 * 1024 * 1024 * 1024, // 16GB default
+		TimeNowFn:    time.Now,
+	})
 
 	// Start Kafka consumer
 	consumer, err := kafka.NewConsumer(

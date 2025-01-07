@@ -4,6 +4,11 @@ All notable changes to the Log Aggregator project will be documented in this fil
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed AlertService initialization in main.go to include required AlertServiceConfig parameter
+- Added default system memory (16GB) and time function configuration
+
 ### Added
 
 - Enhanced REST API Development:
