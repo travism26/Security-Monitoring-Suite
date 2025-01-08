@@ -10,6 +10,11 @@
 - [Structs and Interfaces](#structs-and-interfaces)
 - [Concurrency](#concurrency)
 - [Error Handling](#error-handling)
+- [Context](#context)
+- [Generics](#generics)
+- [Reflection](#reflection)
+- [Testing](#testing)
+- [Common Stdlib Packages](#common-stdlib-packages)
 - [Packages and Modules](#packages-and-modules)
 
 ## Basic Syntax
@@ -440,7 +445,44 @@ default:
 }
 ```
 
+### Sync Package
+
+```go
+// WaitGroup for synchronizing goroutines
+var wg sync.WaitGroup
+wg.Add(1)  // Add a counter
+go func() {
+    defer wg.Done()  // Decrement counter when done
+    // Do work
+}()
+wg.Wait()  // Wait for all goroutines to finish
+
+// Mutex for protecting shared resources
+var mu sync.Mutex
+mu.Lock()
+// Critical section
+mu.Unlock()
+
+// RWMutex for read/write locks
+var rwmu sync.RWMutex
+rwmu.RLock()  // Multiple readers can acquire lock
+// Read operations
+rwmu.RUnlock()
+
+rwmu.Lock()   // Only one writer can acquire lock
+// Write operations
+rwmu.Unlock()
+
+// Once for one-time initialization
+var once sync.Once
+once.Do(func() {
+    // This will only execute once
+})
+```
+
 ## Error Handling
+
+### Basic Error Handling
 
 ```go
 if err != nil {
@@ -454,6 +496,401 @@ type CustomError struct {
 
 func (e *CustomError) Error() string {
     return e.message
+}
+```
+
+### Error Wrapping (Go 1.13+)
+
+```go
+// Wrapping errors
+if err != nil {
+    return fmt.Errorf("failed to process: %w", err)
+}
+
+// Unwrapping errors
+var customErr *CustomError
+if errors.As(err, &customErr) {
+    // Handle custom error
+}
+
+// Check error type
+if errors.Is(err, io.EOF) {
+    // Handle EOF
+}
+```
+
+### Error Best Practices
+
+```go
+// Define error types for specific cases
+var (
+    ErrNotFound = errors.New("not found")
+    ErrInvalid  = errors.New("invalid input")
+)
+
+// Use error variables for comparison
+if errors.Is(err, ErrNotFound) {
+    // Handle not found case
+}
+
+// Custom error types with additional context
+type ValidationError struct {
+    Field string
+    Error error
+}
+
+func (v *ValidationError) Error() string {
+    return fmt.Sprintf("validation failed for %s: %v", v.Field, v.Error)
+}
+
+func (v *ValidationError) Unwrap() error {
+    return v.Error
+}
+```
+
+## Context
+
+### Basic Context Usage
+
+```go
+// Creating context
+ctx := context.Background()
+ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+defer cancel()
+
+// Context with value
+ctx = context.WithValue(ctx, "key", "value")
+value := ctx.Value("key").(string)
+
+// Using context in functions
+func DoWork(ctx context.Context) error {
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    case <-time.After(2 * time.Second):
+        return nil
+    }
+}
+```
+
+### Context Patterns
+
+```go
+// HTTP Server with context
+func handler(w http.ResponseWriter, r *http.Request) {
+    ctx := r.Context()
+    // Use context for timeouts, cancellation, etc.
+}
+
+// Database operations with context
+func (db *DB) QueryWithContext(ctx context.Context, query string) (*Result, error) {
+    select {
+    case <-ctx.Done():
+        return nil, ctx.Err()
+    default:
+        // Perform query
+    }
+}
+
+// Graceful shutdown
+ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+defer cancel()
+if err := server.Shutdown(ctx); err != nil {
+    log.Fatal("Server forced to shutdown:", err)
+}
+```
+
+## Generics (Go 1.18+)
+
+### Basic Generic Types
+
+```go
+// Generic function
+func Min[T constraints.Ordered](x, y T) T {
+    if x < y {
+        return x
+    }
+    return y
+}
+
+// Generic data structure
+type Stack[T any] struct {
+    items []T
+}
+
+func (s *Stack[T]) Push(item T) {
+    s.items = append(s.items, item)
+}
+
+func (s *Stack[T]) Pop() (T, error) {
+    var zero T
+    if len(s.items) == 0 {
+        return zero, errors.New("empty stack")
+    }
+    item := s.items[len(s.items)-1]
+    s.items = s.items[:len(s.items)-1]
+    return item, nil
+}
+```
+
+### Type Constraints
+
+```go
+// Custom constraint
+type Number interface {
+    ~int | ~float64
+}
+
+// Generic function with constraint
+func Sum[T Number](numbers []T) T {
+    var sum T
+    for _, n := range numbers {
+        sum += n
+    }
+    return sum
+}
+
+// Multiple type parameters
+func Map[T, U any](s []T, f func(T) U) []U {
+    r := make([]U, len(s))
+    for i, v := range s {
+        r[i] = f(v)
+    }
+    return r
+}
+```
+
+## Reflection
+
+### Basic Reflection
+
+```go
+// Get type information
+t := reflect.TypeOf(x)
+v := reflect.ValueOf(x)
+
+// Get/Set values
+if v.Kind() == reflect.Ptr && !v.IsNil() {
+    v = v.Elem()
+}
+
+if v.CanSet() {
+    v.SetString("new value")
+}
+
+// Iterate struct fields
+t := reflect.TypeOf(struct{
+    Name string
+    Age  int
+}{})
+
+for i := 0; i < t.NumField(); i++ {
+    field := t.Field(i)
+    fmt.Printf("Field: %s, Type: %s\n", field.Name, field.Type)
+}
+```
+
+### Reflection Use Cases
+
+```go
+// Dynamic method calls
+func CallMethod(v interface{}, method string, args ...interface{}) []reflect.Value {
+    return reflect.ValueOf(v).MethodByName(method).Call(
+        MakeValueSlice(args...))
+}
+
+// Struct tag parsing
+type Person struct {
+    Name string `json:"name" validate:"required"`
+    Age  int    `json:"age" validate:"gte=0,lte=130"`
+}
+
+func ParseTags(v interface{}) map[string]string {
+    t := reflect.TypeOf(v)
+    if t.Kind() == reflect.Ptr {
+        t = t.Elem()
+    }
+
+    tags := make(map[string]string)
+    for i := 0; i < t.NumField(); i++ {
+        field := t.Field(i)
+        tags[field.Name] = field.Tag.Get("json")
+    }
+    return tags
+}
+```
+
+## Testing
+
+### Table-Driven Tests
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name     string
+        x, y     int
+        expected int
+    }{
+        {"positive", 2, 3, 5},
+        {"negative", -2, -3, -5},
+        {"zero", 0, 0, 0},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := Add(tt.x, tt.y)
+            if got != tt.expected {
+                t.Errorf("Add(%d, %d) = %d; want %d",
+                    tt.x, tt.y, got, tt.expected)
+            }
+        })
+    }
+}
+```
+
+### Benchmarking
+
+```go
+func BenchmarkFibonacci(b *testing.B) {
+    for i := 0; i < b.N; i++ {
+        Fibonacci(20)
+    }
+}
+
+// Sub-benchmarks
+func BenchmarkSort(b *testing.B) {
+    sizes := []int{100, 1000, 10000}
+    for _, size := range sizes {
+        b.Run(fmt.Sprintf("size-%d", size), func(b *testing.B) {
+            data := make([]int, size)
+            for i := 0; i < b.N; i++ {
+                b.StopTimer() // Don't measure setup
+                rand.Shuffle(len(data), func(i, j int) {
+                    data[i], data[j] = data[j], data[i]
+                })
+                b.StartTimer() // Measure sort
+                sort.Ints(data)
+            }
+        })
+    }
+}
+```
+
+### Test Helpers
+
+```go
+// Helper function
+func setupTestCase(t *testing.T) func() {
+    t.Helper() // Marks this as a helper function
+
+    // Setup
+    tmpDir, err := ioutil.TempDir("", "test")
+    if err != nil {
+        t.Fatal(err)
+    }
+
+    // Return cleanup function
+    return func() {
+        os.RemoveAll(tmpDir)
+    }
+}
+
+// Using helper
+func TestSomething(t *testing.T) {
+    cleanup := setupTestCase(t)
+    defer cleanup()
+
+    // Test code
+}
+```
+
+## Common Stdlib Packages
+
+### io/ioutil and os
+
+```go
+// Reading files
+data, err := ioutil.ReadFile("file.txt")
+content := string(data)
+
+// Writing files
+err = ioutil.WriteFile("file.txt", []byte("content"), 0644)
+
+// Directory operations
+files, err := ioutil.ReadDir(".")
+for _, f := range files {
+    fmt.Printf("Name: %s, Size: %d\n", f.Name(), f.Size())
+}
+
+// File operations
+f, err := os.OpenFile("file.txt", os.O_RDWR|os.O_CREATE, 0644)
+defer f.Close()
+```
+
+### encoding/json
+
+```go
+// Marshal
+type Person struct {
+    Name string `json:"name"`
+    Age  int    `json:"age"`
+}
+
+p := Person{Name: "John", Age: 30}
+data, err := json.Marshal(p)
+
+// Unmarshal
+var p2 Person
+err = json.Unmarshal(data, &p2)
+
+// Streaming JSON
+dec := json.NewDecoder(reader)
+for dec.More() {
+    var m map[string]interface{}
+    err := dec.Decode(&m)
+    // Process m
+}
+```
+
+### net/http
+
+```go
+// Simple server
+http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, "Hello, %s!", r.URL.Path[1:])
+})
+http.ListenAndServe(":8080", nil)
+
+// HTTP client
+resp, err := http.Get("http://example.com")
+if err != nil {
+    log.Fatal(err)
+}
+defer resp.Body.Close()
+body, err := ioutil.ReadAll(resp.Body)
+```
+
+### time
+
+```go
+// Time operations
+now := time.Now()
+future := now.Add(24 * time.Hour)
+duration := future.Sub(now)
+
+// Formatting
+formatted := now.Format("2006-01-02 15:04:05")
+parsed, err := time.Parse("2006-01-02", "2023-01-01")
+
+// Timers
+timer := time.NewTimer(2 * time.Second)
+<-timer.C // Wait for timer
+
+// Tickers
+ticker := time.NewTicker(1 * time.Second)
+defer ticker.Stop()
+for range ticker.C {
+    // Do something every second
 }
 ```
 
