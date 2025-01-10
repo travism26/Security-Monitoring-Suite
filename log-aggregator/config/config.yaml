@@ -1,38 +1,48 @@
 server:
-  port: '8080'
-  host: '0.0.0.0'
+  port: "8080"
+  host: "0.0.0.0"
 
 kafka:
   brokers:
-    - 'systems-kafka-cluster-kafka-bootstrap:9092'
-  topic: 'system-metrics'
-  group_id: 'log-aggregator-group'
+    - "systems-kafka-cluster-kafka-bootstrap:9092"
+  topic: "system-metrics"
+  group_id: "log-aggregator-group"
 
 database:
-  host: 'postgres-srv'
-  port: '5432'
-  user: 'postgres'
-  password: '${POSTGRES_PASSWORD}' # Should be set via environment variable
-  name: 'logdb'
+  host: "postgres-srv"
+  port: "5432"
+  user: "postgres"
+  password: "${POSTGRES_PASSWORD}" # Should be set via environment variable
+  name: "logdb"
+  max_open_conns: 25 # Maximum number of open connections to the database
+  max_idle_conns: 5 # Maximum number of idle connections in the pool
+  conn_max_lifetime: 5 # Maximum lifetime of a connection in minutes
+  batch_size: 1000 # Maximum number of logs to process in a single batch
 
 logging:
-  level: 'info'
-  format: 'json'
-  output: 'stdout'
+  level: "info"
+  format: "json"
+  output: "stdout"
 
 api:
   cors:
     allowed_origins:
-      - 'http://localhost:3000'
+      - "http://localhost:3000"
     allowed_methods:
-      - 'GET'
-      - 'POST'
-      - 'PUT'
-      - 'DELETE'
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
   rate_limit:
     requests_per_second: 100
     burst: 50
 
 metrics:
   enabled: true
-  path: '/metrics'
+  path: "/metrics"
+
+cache:
+  enabled: true
+  ttl: 5 # Cache TTL in minutes for regular queries
+  time_range_ttl: 2 # Cache TTL in minutes for time range queries
+  cleanup_interval: 1 # Cache cleanup interval in minutes

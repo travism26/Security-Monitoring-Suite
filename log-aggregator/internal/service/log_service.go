@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/travism26/log-aggregator/internal/cache"
 	"github.com/travism26/log-aggregator/internal/domain"
 )
 
@@ -17,17 +18,31 @@ type LogServiceConfig struct {
 	Environment string
 	Application string
 	Component   string
+	Cache       struct {
+		Enabled      bool
+		TTL          time.Duration
+		TimeRangeTTL time.Duration
+	}
 }
 
 type LogService struct {
-	repo   domain.LogRepository
-	config LogServiceConfig
+	repo         domain.LogRepository
+	config       LogServiceConfig
+	cache        cache.Cache
+	keyGenerator *cache.CacheKeyGenerator
 }
 
 func NewLogService(repo domain.LogRepository, config LogServiceConfig) *LogService {
+	var cacheInstance cache.Cache
+	if config.Cache.Enabled {
+		cacheInstance = cache.NewInMemoryCache()
+	}
+
 	return &LogService{
-		repo:   repo,
-		config: config,
+		repo:         repo,
+		config:       config,
+		cache:        cacheInstance,
+		keyGenerator: cache.NewCacheKeyGenerator(),
 	}
 }
 
@@ -58,9 +73,18 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 		log.MetadataStr = string(metadataJSON)
 	}
 
-	return s.retryOperation(func() error {
+	err := s.retryOperation(func() error {
 		return s.repo.Store(log)
 	})
+
+	// If store was successful and cache is enabled, invalidate related cache entries
+	if err == nil && s.cache != nil {
+		s.cache.Delete(s.keyGenerator.ForLog(log.ID))
+		// Clear list caches as they might be affected
+		s.cache.Clear() // TODO: Implement more granular cache invalidation
+	}
+
+	return err
 }
 
 func (s *LogService) StoreBatch(logs []*domain.Log) error {
@@ -79,27 +103,74 @@ func (s *LogService) StoreBatch(logs []*domain.Log) error {
 		}
 	}
 
-	return s.retryOperation(func() error {
+	err := s.retryOperation(func() error {
 		return s.repo.StoreBatch(logs)
 	})
+
+	// If store was successful and cache is enabled, invalidate affected cache entries
+	if err == nil && s.cache != nil {
+		for _, log := range logs {
+			s.cache.Delete(s.keyGenerator.ForLog(log.ID))
+		}
+		// Clear list caches as they might be affected
+		s.cache.Clear() // TODO: Implement more granular cache invalidation
+	}
+
+	return err
 }
 
 func (s *LogService) GetLog(id string) (*domain.Log, error) {
+	if s.cache != nil {
+		// Try to get from cache first
+		if cached, found := s.cache.Get(s.keyGenerator.ForLog(id)); found {
+			if log, ok := cached.(*domain.Log); ok {
+				return log, nil
+			}
+		}
+	}
+
+	// If not in cache or cache disabled, get from repository
 	var log *domain.Log
 	err := s.retryOperation(func() error {
 		var err error
 		log, err = s.repo.FindByID(id)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Cache the result if cache is enabled
+		if s.cache != nil && log != nil {
+			s.cache.Set(s.keyGenerator.ForLog(id), log, s.config.Cache.TTL)
+		}
+		return nil
 	})
 	return log, err
 }
 
 func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
+	if s.cache != nil {
+		// Try to get from cache first
+		if cached, found := s.cache.Get(s.keyGenerator.ForLogList(limit, offset)); found {
+			if logs, ok := cached.([]*domain.Log); ok {
+				return logs, nil
+			}
+		}
+	}
+
+	// If not in cache or cache disabled, get from repository
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
 		logs, err = s.repo.List(limit, offset)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Cache the result if cache is enabled
+		if s.cache != nil && logs != nil {
+			s.cache.Set(s.keyGenerator.ForLogList(limit, offset), logs, s.config.Cache.TTL)
+		}
+		return nil
 	})
 	return logs, err
 }
@@ -110,11 +181,29 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 		return nil, fmt.Errorf("invalid time range: start time %v is after end time %v", start, end)
 	}
 
+	if s.cache != nil {
+		// Try to get from cache first
+		if cached, found := s.cache.Get(s.keyGenerator.ForTimeRange(start, end, limit, offset)); found {
+			if logs, ok := cached.([]*domain.Log); ok {
+				return logs, nil
+			}
+		}
+	}
+
+	// If not in cache or cache disabled, get from repository
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
 		logs, err = s.repo.ListByTimeRange(start, end, limit, offset)
-		return err
+		if err != nil {
+			return err
+		}
+
+		// Cache the result if cache is enabled
+		if s.cache != nil && logs != nil {
+			s.cache.Set(s.keyGenerator.ForTimeRange(start, end, limit, offset), logs, s.config.Cache.TimeRangeTTL)
+		}
+		return nil
 	})
 	return logs, err
 }

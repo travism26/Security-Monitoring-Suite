@@ -24,11 +24,21 @@ type Config struct {
 		GroupID string   `mapstructure:"group_id"`
 	}
 	Database struct {
-		Host     string `mapstructure:"host"`
-		Port     string `mapstructure:"port"`
-		User     string `mapstructure:"user"`
-		Password string `mapstructure:"password"`
-		Name     string `mapstructure:"name"`
+		Host            string `mapstructure:"host"`
+		Port            string `mapstructure:"port"`
+		User            string `mapstructure:"user"`
+		Password        string `mapstructure:"password"`
+		Name            string `mapstructure:"name"`
+		MaxOpenConns    int    `mapstructure:"max_open_conns"`
+		MaxIdleConns    int    `mapstructure:"max_idle_conns"`
+		ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"` // in minutes
+		BatchSize       int    `mapstructure:"batch_size"`        // size of batch inserts
+	}
+	Cache struct {
+		Enabled         bool `mapstructure:"enabled"`
+		TTL             int  `mapstructure:"ttl"`              // in minutes
+		TimeRangeTTL    int  `mapstructure:"time_range_ttl"`   // in minutes
+		CleanupInterval int  `mapstructure:"cleanup_interval"` // in minutes
 	}
 	LogService struct {
 		Environment string `mapstructure:"environment"`
@@ -46,6 +56,14 @@ func LoadConfig() (*Config, error) {
 	// Set default values
 	viper.SetDefault("server.port", "8080")
 	viper.SetDefault("server.host", "0.0.0.0")
+	viper.SetDefault("cache.enabled", true)
+	viper.SetDefault("cache.ttl", 5)              // 5 minutes default TTL
+	viper.SetDefault("cache.time_range_ttl", 2)   // 2 minutes for time range queries
+	viper.SetDefault("cache.cleanup_interval", 1) // 1 minute cleanup interval
+	viper.SetDefault("database.max_open_conns", 25)
+	viper.SetDefault("database.max_idle_conns", 5)
+	viper.SetDefault("database.conn_max_lifetime", 5)         // 5 minutes
+	viper.SetDefault("database.batch_size", 1000)             // default batch size for inserts
 	viper.SetDefault("api.api_keys", []string{"dev-api-key"}) // Default API key for development
 	viper.SetDefault("kafka.topic", "logs")
 	viper.SetDefault("kafka.groupid", "log-aggregator")
@@ -70,6 +88,14 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("database.user", "POSTGRES_USER")
 	viper.BindEnv("database.password", "POSTGRES_PASSWORD")
 	viper.BindEnv("database.name", "POSTGRES_DB")
+	viper.BindEnv("database.max_open_conns", "POSTGRES_MAX_OPEN_CONNS")
+	viper.BindEnv("database.max_idle_conns", "POSTGRES_MAX_IDLE_CONNS")
+	viper.BindEnv("database.conn_max_lifetime", "POSTGRES_CONN_MAX_LIFETIME")
+	viper.BindEnv("database.batch_size", "POSTGRES_BATCH_SIZE")
+	viper.BindEnv("cache.enabled", "LOG_AGG_CACHE_ENABLED")
+	viper.BindEnv("cache.ttl", "LOG_AGG_CACHE_TTL")
+	viper.BindEnv("cache.time_range_ttl", "LOG_AGG_CACHE_TIME_RANGE_TTL")
+	viper.BindEnv("cache.cleanup_interval", "LOG_AGG_CACHE_CLEANUP_INTERVAL")
 	viper.BindEnv("logservice.environment", "LOG_AGG_ENV")
 	viper.BindEnv("logservice.application", "LOG_AGG_APP")
 	viper.BindEnv("logservice.component", "LOG_AGG_COMPONENT")
@@ -134,5 +160,33 @@ func validateConfig(cfg *Config) error {
 	if len(cfg.API.Keys) == 0 {
 		return fmt.Errorf("at least one API key is required")
 	}
+
+	// Validate database connection pool settings
+	if cfg.Database.MaxOpenConns <= 0 {
+		return fmt.Errorf("database max open connections must be greater than 0")
+	}
+	if cfg.Database.MaxIdleConns <= 0 {
+		return fmt.Errorf("database max idle connections must be greater than 0")
+	}
+	if cfg.Database.MaxIdleConns > cfg.Database.MaxOpenConns {
+		return fmt.Errorf("database max idle connections cannot be greater than max open connections")
+	}
+	if cfg.Database.ConnMaxLifetime <= 0 {
+		return fmt.Errorf("database connection max lifetime must be greater than 0")
+	}
+
+	// Validate cache settings if enabled
+	if cfg.Cache.Enabled {
+		if cfg.Cache.TTL <= 0 {
+			return fmt.Errorf("cache TTL must be greater than 0 when cache is enabled")
+		}
+		if cfg.Cache.TimeRangeTTL <= 0 {
+			return fmt.Errorf("cache time range TTL must be greater than 0 when cache is enabled")
+		}
+		if cfg.Cache.CleanupInterval <= 0 {
+			return fmt.Errorf("cache cleanup interval must be greater than 0 when cache is enabled")
+		}
+	}
+
 	return nil
 }

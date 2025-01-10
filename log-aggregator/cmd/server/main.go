@@ -62,14 +62,26 @@ func main() {
 
 	// Initialize repositories
 	logRepo := postgres.NewLogRepository(db)
+	logRepo.SetBatchSize(cfg.Database.BatchSize)
 	processRepo := postgres.NewProcessRepository(db)
 	alertRepo := postgres.NewAlertRepository(db)
+
+	log.Printf("Log repository configured with batch size: %d", cfg.Database.BatchSize)
 
 	// Initialize services
 	logService := service.NewLogService(logRepo, service.LogServiceConfig{
 		Environment: cfg.LogService.Environment,
 		Application: cfg.LogService.Application,
 		Component:   cfg.LogService.Component,
+		Cache: struct {
+			Enabled      bool
+			TTL          time.Duration
+			TimeRangeTTL time.Duration
+		}{
+			Enabled:      cfg.Cache.Enabled,
+			TTL:          time.Duration(cfg.Cache.TTL) * time.Minute,
+			TimeRangeTTL: time.Duration(cfg.Cache.TimeRangeTTL) * time.Minute,
+		},
 	})
 	alertService := service.NewAlertService(alertRepo, &service.AlertServiceConfig{
 		SystemMemory: 16 * 1024 * 1024 * 1024, // 16GB default
@@ -166,10 +178,14 @@ func initializeDB(cfg *config.Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Set connection pool settings
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	// Set connection pool settings from configuration
+	db.SetMaxOpenConns(cfg.Database.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.Database.MaxIdleConns)
+	db.SetConnMaxLifetime(time.Duration(cfg.Database.ConnMaxLifetime) * time.Minute)
+
+	// Log connection pool settings
+	log.Printf("Database connection pool configured with: MaxOpenConns=%d, MaxIdleConns=%d, ConnMaxLifetime=%dm",
+		cfg.Database.MaxOpenConns, cfg.Database.MaxIdleConns, cfg.Database.ConnMaxLifetime)
 
 	return db, nil
 }
