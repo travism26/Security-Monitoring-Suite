@@ -2,7 +2,7 @@
 
 ## Documentation Structure
 
-This documentation provides a comprehensive overview of the Log Aggregator system, its components, and deployment procedures. The documentation is organized into the following sections:
+This documentation provides an overview of the Log Aggregator system, its components, and deployment procedures. The documentation is organized into the following sections:
 
 ### 1. [Architecture](architecture.md)
 
