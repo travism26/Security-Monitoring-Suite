@@ -1,0 +1,20 @@
+kafka:
+  brokers:
+    - "localhost:9092"
+  consumer_group: "mini-xdr-consumer"
+  topics:
+    - "security-events"
+    - "system-metrics"
+    - "network-traffic"
+  security_enabled: false
+  sasl:
+    username: ""
+    password: ""
+    mechanism: "PLAIN"
+  tls:
+    enabled: false
+    ca_file: ""
+    cert_file: ""
+    key_file: ""
+
+log_level: "info" # Can be "debug", "info", "warn", "error"
