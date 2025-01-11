@@ -27,6 +27,10 @@ The **Mini XDR System** (Extended Detection and Response) is a lightweight, exte
 - **Threat Intelligence**:
   - Leverage third-party APIs or feeds (e.g., VirusTotal, ThreatConnect).
   - Enrich events with additional metadata for deeper analysis.
+- **STIX Integration**:
+  - Use Structured Threat Information eXpression (STIX) for representing and sharing threat data.
+  - Correlate incoming events with STIX Indicators, Attack Patterns, and Observed Data.
+  - Export alerts in STIX format for interoperability with external systems.
 
 ### 2.3 Data Pipeline
 
@@ -37,6 +41,7 @@ The **Mini XDR System** (Extended Detection and Response) is a lightweight, exte
 - **Processing**:
   - Normalize incoming data into a unified format.
   - Apply detection rules or machine learning models for anomaly detection.
+  - Represent threat intelligence and anomalies in STIX format.
 - **Storage**:
   - Persist correlated events and alerts in a centralized database.
 
@@ -78,10 +83,12 @@ graph TD
 
 - Expand data sources to include more metrics and network data.
 - Implement ML-based anomaly detection for smarter analysis.
+- Deepen STIX usage for enriched threat correlation and external sharing.
 
 ### 4.3 Long-Term Vision
 
 - Evolve into a comprehensive XDR system with automated response capabilities.
 - Add support for multi-tenant environments for enterprise use.
+- Partner with external STIX-compatible threat intelligence platforms.
 
 ---
