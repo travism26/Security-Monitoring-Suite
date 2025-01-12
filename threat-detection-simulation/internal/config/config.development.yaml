@@ -1,0 +1,12 @@
+environment: development
+endpoint: "http://localhost:8080/api/metrics"
+interval: 30
+log_level: "DEBUG"
+scenarios:
+  high-cpu:
+    cpu_usage: 95.0
+    duration: 300
+  malicious-process:
+    process_name: "malware.exe"
+    cpu_percent: 80.0
+    memory_percent: 20.0

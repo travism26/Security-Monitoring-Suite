@@ -1,0 +1,12 @@
+environment: production
+endpoint: "https://api.security-monitoring-suite.com/api/metrics"
+interval: 60
+log_level: "INFO"
+scenarios:
+  high-cpu:
+    cpu_usage: 90.0
+    duration: 600
+  malicious-process:
+    process_name: "malware.exe"
+    cpu_percent: 75.0
+    memory_percent: 15.0
