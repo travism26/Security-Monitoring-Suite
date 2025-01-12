@@ -21,7 +21,14 @@ Status: In Progress
   - Implemented type checking for event fields
   - Added severity level validation
 - [ ] Add event enrichment system
+  - [ ] Implement STIX data model integration
+  - [ ] Create STIX object mappers for events
+  - [ ] Add STIX indicator correlation
+  - [ ] Implement STIX pattern matching
 - [ ] Create event correlation engine
+  - [ ] Add STIX-based correlation rules
+  - [ ] Implement STIX observed data correlation
+  - [ ] Create STIX attack pattern mapping
 - [ ] Implement event prioritization
 - [ ] Add event deduplication
 - [x] Add unit tests for the code added
@@ -249,8 +256,15 @@ Status: Planned
 - [ ] Add SIEM integration capabilities
 - [ ] Create custom integration framework
 - [ ] Implement data transformation engine
+  - [ ] Create STIX data export pipeline
+  - [ ] Implement STIX format validation
+  - [ ] Add STIX version compatibility
 - [ ] Add API authentication system
 - [ ] Create integration monitoring
+- [ ] Implement STIX sharing capabilities
+  - [ ] Add TAXII server integration
+  - [ ] Create STIX bundle management
+  - [ ] Implement STIX data versioning
 
 ### 5. Advanced Analytics Platform [NEW] [Priority: Medium]
 Status: Planned
