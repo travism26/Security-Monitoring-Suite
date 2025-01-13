@@ -49,12 +49,5 @@ func RegisterAPIRoutes(r *gin.Engine, logHandler *LogHandler, alertHandler *Aler
 			alerts.PUT("/:id/status", alertHandler.UpdateAlertStatus)
 		}
 
-		// Health check endpoint (no auth required)
-		r.GET("/health", func(c *gin.Context) {
-			c.JSON(200, gin.H{
-				"status": "ok",
-				"time":   time.Now().Format(time.RFC3339),
-			})
-		})
 	}
 }
