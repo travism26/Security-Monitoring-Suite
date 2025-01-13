@@ -1,5 +1,5 @@
 environment: development
-endpoint: "http://localhost:8080/api/metrics"
+endpoint: "http://localhost:3000/api/v1/system-metrics/ingest"
 interval: 30
 log_level: "DEBUG"
 scenarios:

@@ -25,7 +25,7 @@ go.work.sum
 .env
 
 # Log files
-*.log
+agent.log
 
 # Cursor files
 .file-cursors.md
