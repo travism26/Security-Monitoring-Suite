@@ -29,7 +29,7 @@ type Consumer struct {
 // NewConsumer creates a new Kafka consumer instance
 func NewConsumer(brokers []string, groupID string, topics []string, handler EventHandler, logger *zap.Logger) (*Consumer, error) {
 	config := sarama.NewConfig()
-	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
+	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 	config.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	client, err := sarama.NewConsumerGroup(brokers, groupID, config)
