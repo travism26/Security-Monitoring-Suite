@@ -34,11 +34,11 @@ export function EventLog() {
 
   if (loading) return <div>Loading...</div>;
   // FOR NOW THE ENDPOINTS ARE NOT SETUP I DONT WANNA SEE ERRORS YET.
-  // if (error) return <div>Error: {error.message}</div>;
+  // if (error) return <div>Error: {error.message}</div>; Recent Events (Log aggregator Data)
 
   return (
     <div className="bg-white shadow-md rounded-lg p-4 overflow-x-auto">
-      <h2 className="text-xl font-semibold mb-4">Recent Events</h2>
+      <h2 className="text-xl font-semibold mb-4">Recent Events (Log aggregator Data)</h2>
       <Table>
         <TableHeader>
           <TableRow>
@@ -48,16 +48,21 @@ export function EventLog() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {events && events.map((event) => (
-            <TableRow key={event.id}>
-              <TableCell>{event.type}</TableCell>
-              <TableCell>{event.source}</TableCell>
-              <TableCell>{event.timestamp}</TableCell>
+          {events && events.length > 0 ? (
+            events.map((event) => (
+              <TableRow key={event.id}>
+                <TableCell>{event.type}</TableCell>
+                <TableCell>{event.source}</TableCell>
+                <TableCell>{event.timestamp}</TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={3} className="text-center">No events to display</TableCell>
             </TableRow>
-          ))}
+          )}
         </TableBody>
       </Table>
     </div>
-  )
-}
+  )}
 

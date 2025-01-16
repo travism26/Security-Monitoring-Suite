@@ -29,19 +29,22 @@ export function ThreatAlerts() {
 
   return (
     <div className="bg-white shadow-md rounded-lg p-4">
-      <h2 className="text-xl font-semibold mb-4">Threat Alerts</h2>
+      <h2 className="text-xl font-semibold mb-4">Threat Alerts (XDR Data)</h2>
       <div className="space-y-4">
-        {alerts && alerts.map((alert) => (
-          <Alert key={alert.id} variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>{alert.title}</AlertTitle>
-            <AlertDescription>
-              {alert.description}
-            </AlertDescription>
-          </Alert>
-        ))}
+        {alerts && alerts.length > 0 ? (
+          alerts.map((alert) => (
+            <Alert key={alert.id} variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>{alert.title}</AlertTitle>
+              <AlertDescription>
+                {alert.description}
+              </AlertDescription>
+            </Alert>
+          ))
+        ) : (
+          <div>No threat alerts to display</div>
+        )}
       </div>
     </div>
   )
 }
-
