@@ -20,6 +20,7 @@ type AlertService interface {
 }
 
 // ProcessRepository defines the interface for process storage operations
+// TODO: Rename this to ProcessService to follow other naming conventions
 type ProcessRepository interface {
 	StoreBatch(processes []domain.Process) error
 	FindByLogID(logID string) ([]domain.Process, error)

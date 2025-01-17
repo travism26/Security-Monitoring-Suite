@@ -18,7 +18,7 @@ type Consumer struct {
 	topic             string
 	logService        LogService
 	alertService      AlertService
-	processRepository ProcessRepository
+	processRepository ProcessRepository // rename to Service
 }
 
 func NewConsumer(brokers []string, groupID, topic string, logService LogService, alertService AlertService, processRepo ProcessRepository) (*Consumer, error) {
