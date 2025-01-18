@@ -1,56 +1,95 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { Home, Shield, AlertCircle, Settings, LogOut, Menu } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { Home, BarChart2, Shield, Bell, Settings, AlertOctagon, Key, LogOut } from 'lucide-react'
+import { cn } from "@/lib/utils"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarFooter,
+} from "@/components/ui/sidebar"
+import { useAuth } from '../contexts/AuthContext'
+import { useTeam } from '../contexts/TeamContext'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
 
-export function Sidebar() {
-  const [isOpen, setIsOpen] = useState(false)
+const menuItems = [
+  { icon: Home, label: 'Dashboard', href: '/dashboard' },
+  { icon: BarChart2, label: 'Analytics', href: '/analytics' },
+  { icon: Shield, label: 'Threats', href: '/threats' },
+  { icon: Bell, label: 'Alerts', href: '/alerts' },
+  { icon: AlertOctagon, label: 'Incident Response', href: '/incident-response' },
+  { icon: Key, label: 'API Keys', href: '/api-keys' },
+  { icon: Settings, label: 'Settings', href: '/settings' },
+]
+
+export function SidebarNav() {
   const pathname = usePathname()
+  const { user, logout } = useAuth()
+  const { currentTeam, teams, switchTeam } = useTeam()
 
   return (
-    <>
-      <button
-        className="lg:hidden fixed top-4 left-4 z-20 p-2 bg-gray-800 text-white rounded-md"
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        <Menu />
-      </button>
-      <div className={`${isOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 transition-transform duration-300 ease-in-out fixed inset-y-0 left-0 z-10 w-64 bg-gray-800 overflow-y-auto lg:static lg:block`}>
-        <div className="flex items-center justify-center h-20 shadow-md">
-          <h1 className="text-3xl uppercase text-white">SIEM XDR</h1>
-        </div>
-        <ul className="flex flex-col py-4">
-          {[
-            { href: "/", icon: Home, label: "Dashboard" },
-            { href: "/events", icon: Shield, label: "Events" },
-            { href: "/alerts", icon: AlertCircle, label: "Alerts" },
-            { href: "/settings", icon: Settings, label: "Settings" },
-          ].map(({ href, icon: Icon, label }) => (
-            <li key={href}>
-              <Link 
-                href={href} 
-                className={`flex flex-row items-center h-12 transform hover:translate-x-2 transition-transform ease-in duration-200 text-gray-400 hover:text-white ${
-                  pathname === href ? 'text-white' : ''
-                }`}
-              >
-                <span className="inline-flex items-center justify-center h-12 w-12 text-lg text-gray-400">
-                  <Icon />
-                </span>
-                <span className="text-sm font-medium">{label}</span>
+    <Sidebar>
+      <SidebarHeader>
+        <SidebarTrigger className="absolute right-2 top-2 md:hidden" />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/dashboard">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                  <Shield className="size-4" />
+                </div>
+                <div className="flex flex-col gap-0.5 leading-none">
+                  <span className="font-semibold">SIEM Dashboard</span>
+                  <span className="text-xs text-muted-foreground">Security at a glance</span>
+                </div>
               </Link>
-            </li>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton asChild isActive={pathname === item.href}>
+                <Link href={item.href}>
+                  <item.icon className="mr-2 h-4 w-4" />
+                  {item.label}
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           ))}
-        </ul>
-        <div className="mt-auto pb-4">
-          <Link href="/logout" className="flex flex-row items-center h-12 transform hover:translate-x-2 transition-transform ease-in duration-200 text-gray-400 hover:text-white">
-            <span className="inline-flex items-center justify-center h-12 w-12 text-lg text-gray-400"><LogOut /></span>
-            <span className="text-sm font-medium">Logout</span>
-          </Link>
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter>
+        <div className="p-4 space-y-4">
+          <Select onValueChange={switchTeam} value={currentTeam?.id}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select team" />
+            </SelectTrigger>
+            <SelectContent>
+              {teams.map((team) => (
+                <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <div className="flex items-center justify-between">
+            <span className="text-sm">{user?.name}</span>
+            <Button variant="ghost" size="sm" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </Button>
+          </div>
         </div>
-      </div>
-    </>
+      </SidebarFooter>
+    </Sidebar>
   )
 }
 
