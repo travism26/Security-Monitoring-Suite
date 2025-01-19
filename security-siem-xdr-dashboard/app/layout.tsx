@@ -1,11 +1,13 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
+import { AuthProvider } from './contexts/AuthContext'
+import { TeamProvider } from './contexts/TeamContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
-  title: 'Security SIEM XDR Dashboard',
-  description: 'Monitor and manage security events with our SIEM XDR solution',
+  title: 'SIEM Dashboard',
+  description: 'Security Information and Event Management Dashboard',
 }
 
 export default function RootLayout({
@@ -15,7 +17,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <AuthProvider>
+          <TeamProvider>
+            {children}
+          </TeamProvider>
+        </AuthProvider>
+      </body>
     </html>
   )
 }
