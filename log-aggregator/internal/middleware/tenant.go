@@ -5,6 +5,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/travism26/log-aggregator/internal/domain"
+	"github.com/travism26/log-aggregator/internal/repository/postgres"
+	"github.com/travism26/log-aggregator/internal/service"
 )
 
 const (
@@ -103,4 +105,13 @@ func RequireCustomerKey() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+// Tenant returns the tenant middleware with default validator
+func Tenant() gin.HandlerFunc {
+	// Create a new API key service with default settings
+	validator := service.NewAPIKeyService(
+		postgres.NewAPIKeyRepository(postgres.GetDB()),
+	)
+	return TenantMiddleware(validator)
 }

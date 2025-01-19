@@ -36,14 +36,15 @@ func (r *LogRepository) SetBatchSize(size int) {
 func (r *LogRepository) Store(log *domain.Log) error {
 	query := `
 		INSERT INTO logs (
-			id, timestamp, host, message, level, metadata,
+			id, organization_id, timestamp, host, message, level, metadata,
 			process_count, total_cpu_percent, total_memory_usage
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	`
 
 	_, err := r.db.Exec(query,
 		log.ID,
+		log.OrganizationID,
 		log.Timestamp,
 		log.Host,
 		log.Message,
@@ -128,17 +129,18 @@ func (r *LogRepository) storeBatchChunk(logs []*domain.Log) error {
 	return nil
 }
 
-func (r *LogRepository) FindByID(id string) (*domain.Log, error) {
+func (r *LogRepository) FindByID(orgID, id string) (*domain.Log, error) {
 	query := `
 		SELECT 
-			id, timestamp, host, message, level, metadata,
+			id, organization_id, timestamp, host, message, level, metadata,
 			process_count, total_cpu_percent, total_memory_usage
 		FROM logs 
-		WHERE id = $1
+		WHERE organization_id = $1 AND id = $2
 	`
 	log := &domain.Log{}
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRow(query, orgID, id).Scan(
 		&log.ID,
+		&log.OrganizationID,
 		&log.Timestamp,
 		&log.Host,
 		&log.Message,
@@ -157,24 +159,25 @@ func (r *LogRepository) FindByID(id string) (*domain.Log, error) {
 	return log, nil
 }
 
-func (r *LogRepository) List(limit, offset int) ([]*domain.Log, error) {
+func (r *LogRepository) List(orgID string, limit, offset int) ([]*domain.Log, error) {
 	// Use CTE to optimize the pagination query
 	query := `
 		WITH recent_logs AS (
 			SELECT 
-				id, timestamp, host, message, level, metadata,
+				id, organization_id, timestamp, host, message, level, metadata,
 				process_count, total_cpu_percent, total_memory_usage,
 				ROW_NUMBER() OVER (ORDER BY timestamp DESC) as row_num
-			FROM logs 
+			FROM logs
+			WHERE organization_id = $3
 			ORDER BY timestamp DESC
 		)
 		SELECT 
-			id, timestamp, host, message, level, metadata,
+			id, organization_id, timestamp, host, message, level, metadata,
 			process_count, total_cpu_percent, total_memory_usage
 		FROM recent_logs
 		WHERE row_num > $2 AND row_num <= ($2 + $1)
 	`
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.Query(query, limit, offset, orgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list logs: %w", err)
 	}
@@ -183,25 +186,25 @@ func (r *LogRepository) List(limit, offset int) ([]*domain.Log, error) {
 	return r.scanLogs(rows)
 }
 
-func (r *LogRepository) ListByTimeRange(start, end time.Time, limit, offset int) ([]*domain.Log, error) {
+func (r *LogRepository) ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*domain.Log, error) {
 	// Use CTE with time range filter for better performance
 	query := `
 		WITH time_range_logs AS (
 			SELECT 
-				id, timestamp, host, message, level, metadata,
+				id, organization_id, timestamp, host, message, level, metadata,
 				process_count, total_cpu_percent, total_memory_usage,
 				ROW_NUMBER() OVER (ORDER BY timestamp DESC) as row_num
 			FROM logs 
-			WHERE timestamp >= $1 AND timestamp <= $2
+			WHERE organization_id = $1 AND timestamp >= $2 AND timestamp <= $3
 			ORDER BY timestamp DESC
 		)
 		SELECT 
-			id, timestamp, host, message, level, metadata,
+			id, organization_id, timestamp, host, message, level, metadata,
 			process_count, total_cpu_percent, total_memory_usage
 		FROM time_range_logs
 		WHERE row_num > $4 AND row_num <= ($4 + $3)
 	`
-	rows, err := r.db.Query(query, start, end, limit, offset)
+	rows, err := r.db.Query(query, orgID, start, end, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list logs by time range: %w", err)
 	}
@@ -210,15 +213,15 @@ func (r *LogRepository) ListByTimeRange(start, end time.Time, limit, offset int)
 	return r.scanLogs(rows)
 }
 
-// GetLogCountByTimeRange returns the total number of logs within a time range
-func (r *LogRepository) GetLogCountByTimeRange(start, end time.Time) (int, error) {
+// CountByTimeRange returns the total number of logs within a time range
+func (r *LogRepository) CountByTimeRange(orgID string, start, end time.Time) (int64, error) {
 	query := `
 		SELECT COUNT(*) 
 		FROM logs 
-		WHERE timestamp >= $1 AND timestamp <= $2
+		WHERE organization_id = $1 AND timestamp >= $2 AND timestamp <= $3
 	`
-	var count int
-	err := r.db.QueryRow(query, start, end).Scan(&count)
+	var count int64
+	err := r.db.QueryRow(query, orgID, start, end).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get log count: %w", err)
 	}
@@ -232,6 +235,7 @@ func (r *LogRepository) scanLogs(rows *sql.Rows) ([]*domain.Log, error) {
 		log := &domain.Log{}
 		err := rows.Scan(
 			&log.ID,
+			&log.OrganizationID,
 			&log.Timestamp,
 			&log.Host,
 			&log.Message,
@@ -250,4 +254,56 @@ func (r *LogRepository) scanLogs(rows *sql.Rows) ([]*domain.Log, error) {
 		return nil, fmt.Errorf("error iterating log rows: %w", err)
 	}
 	return logs, nil
+}
+
+func (r *LogRepository) ListByHost(orgID string, host string, limit, offset int) ([]*domain.Log, error) {
+	query := `
+		WITH host_logs AS (
+			SELECT 
+				id, organization_id, timestamp, host, message, level, metadata,
+				process_count, total_cpu_percent, total_memory_usage,
+				ROW_NUMBER() OVER (ORDER BY timestamp DESC) as row_num
+			FROM logs 
+			WHERE organization_id = $1 AND host = $2
+			ORDER BY timestamp DESC
+		)
+		SELECT 
+			id, organization_id, timestamp, host, message, level, metadata,
+			process_count, total_cpu_percent, total_memory_usage
+		FROM host_logs
+		WHERE row_num > $4 AND row_num <= ($4 + $3)
+	`
+	rows, err := r.db.Query(query, orgID, host, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list logs by host: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanLogs(rows)
+}
+
+func (r *LogRepository) ListByLevel(orgID string, level string, limit, offset int) ([]*domain.Log, error) {
+	query := `
+		WITH level_logs AS (
+			SELECT 
+				id, organization_id, timestamp, host, message, level, metadata,
+				process_count, total_cpu_percent, total_memory_usage,
+				ROW_NUMBER() OVER (ORDER BY timestamp DESC) as row_num
+			FROM logs 
+			WHERE organization_id = $1 AND level = $2
+			ORDER BY timestamp DESC
+		)
+		SELECT 
+			id, organization_id, timestamp, host, message, level, metadata,
+			process_count, total_cpu_percent, total_memory_usage
+		FROM level_logs
+		WHERE row_num > $4 AND row_num <= ($4 + $3)
+	`
+	rows, err := r.db.Query(query, orgID, level, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list logs by level: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanLogs(rows)
 }

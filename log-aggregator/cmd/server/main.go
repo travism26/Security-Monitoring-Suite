@@ -11,6 +11,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "github.com/lib/pq"
+
 	"github.com/gin-gonic/gin"
 	"github.com/travism26/log-aggregator/internal/config"
 	"github.com/travism26/log-aggregator/internal/handler"
@@ -60,6 +62,9 @@ func main() {
 	}
 	defer db.Close()
 
+	// Set database connection for postgres package
+	postgres.SetDB(db)
+
 	// Initialize repositories
 	logRepo := postgres.NewLogRepository(db)
 	logRepo.SetBatchSize(cfg.Database.BatchSize)
@@ -70,9 +75,10 @@ func main() {
 
 	// Initialize services
 	logService := service.NewLogService(logRepo, service.LogServiceConfig{
-		Environment: cfg.LogService.Environment,
-		Application: cfg.LogService.Application,
-		Component:   cfg.LogService.Component,
+		OrganizationID: cfg.Organization.ID,
+		Environment:    cfg.LogService.Environment,
+		Application:    cfg.LogService.Application,
+		Component:      cfg.LogService.Component,
 		Cache: struct {
 			Enabled      bool
 			TTL          time.Duration
@@ -84,8 +90,9 @@ func main() {
 		},
 	})
 	alertService := service.NewAlertService(alertRepo, &service.AlertServiceConfig{
-		SystemMemory: 16 * 1024 * 1024 * 1024, // 16GB default
-		TimeNowFn:    time.Now,
+		OrganizationID: cfg.Organization.ID,
+		SystemMemory:   16 * 1024 * 1024 * 1024, // 16GB default
+		TimeNowFn:      time.Now,
 	})
 
 	// Start Kafka consumer
@@ -116,6 +123,7 @@ func main() {
 		middleware.RequestID(),
 		middleware.Logger(),
 		middleware.Recovery(),
+		middleware.Tenant(), // Add tenant middleware for multi-tenancy support
 	)
 
 	// Register health check endpoints

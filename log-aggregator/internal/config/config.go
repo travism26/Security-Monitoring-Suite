@@ -15,6 +15,10 @@ type Config struct {
 		Port string `mapstructure:"port"`
 		Host string `mapstructure:"host"`
 	}
+	Organization struct {
+		ID   string `mapstructure:"id"`
+		Name string `mapstructure:"name"`
+	}
 	API struct {
 		Keys []string `mapstructure:"api_keys"`
 	}
@@ -70,6 +74,8 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("logservice.environment", "production")
 	viper.SetDefault("logservice.application", "log-aggregator")
 	viper.SetDefault("logservice.component", "log-service")
+	viper.SetDefault("organization.id", "default")
+	viper.SetDefault("organization.name", "Default Organization")
 
 	// Map environment variables
 	viper.SetEnvPrefix("LOG_AGG") // prefix for environment variables
@@ -99,6 +105,8 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("logservice.environment", "LOG_AGG_ENV")
 	viper.BindEnv("logservice.application", "LOG_AGG_APP")
 	viper.BindEnv("logservice.component", "LOG_AGG_COMPONENT")
+	viper.BindEnv("organization.id", "LOG_AGG_ORG_ID")
+	viper.BindEnv("organization.name", "LOG_AGG_ORG_NAME")
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -156,6 +164,9 @@ func validateConfig(cfg *Config) error {
 	}
 	if cfg.LogService.Component == "" {
 		return fmt.Errorf("log service component name is required")
+	}
+	if cfg.Organization.ID == "" {
+		return fmt.Errorf("organization ID is required")
 	}
 	if len(cfg.API.Keys) == 0 {
 		return fmt.Errorf("at least one API key is required")

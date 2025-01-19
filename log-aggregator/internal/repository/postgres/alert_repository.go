@@ -21,15 +21,16 @@ func NewAlertRepository(db *sql.DB) *AlertRepository {
 func (r *AlertRepository) Store(alert *domain.Alert) error {
 	query := `
 		INSERT INTO alerts (
-			id, title, description, severity, status,
+			id, organization_id, title, description, severity, status,
 			source, created_at, updated_at, resolved_at
 		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 		)`
 
 	_, err := r.db.Exec(
 		query,
 		alert.ID,
+		alert.OrganizationID,
 		alert.Title,
 		alert.Description,
 		alert.Severity,
@@ -88,16 +89,16 @@ func (r *AlertRepository) storeAlertMetadata(alertID string, metadata map[string
 	return nil
 }
 
-func (r *AlertRepository) FindByID(id string) (*domain.Alert, error) {
+func (r *AlertRepository) FindByID(orgID, id string) (*domain.Alert, error) {
 	query := `
 		SELECT 
 			id, title, description, severity, status,
 			source, created_at, updated_at, resolved_at
 		FROM alerts
-		WHERE id = $1`
+		WHERE organization_id = $1 AND id = $2`
 
 	alert := &domain.Alert{}
-	err := r.db.QueryRow(query, id).Scan(
+	err := r.db.QueryRow(query, orgID, id).Scan(
 		&alert.ID,
 		&alert.Title,
 		&alert.Description,
@@ -179,16 +180,17 @@ func (r *AlertRepository) getAlertMetadata(alertID string) (map[string]interface
 	return metadata, nil
 }
 
-func (r *AlertRepository) List(limit, offset int) ([]*domain.Alert, error) {
+func (r *AlertRepository) List(orgID string, limit, offset int) ([]*domain.Alert, error) {
 	query := `
 		SELECT 
 			id, title, description, severity, status,
 			source, created_at, updated_at, resolved_at
 		FROM alerts
+		WHERE organization_id = $1
 		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2`
+		LIMIT $2 OFFSET $3`
 
-	rows, err := r.db.Query(query, limit, offset)
+	rows, err := r.db.Query(query, orgID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list alerts: %w", err)
 	}
@@ -271,39 +273,249 @@ func (r *AlertRepository) Update(alert *domain.Alert) error {
 	return nil
 }
 
-func (r *AlertRepository) FindByStatus(status domain.AlertStatus, limit, offset int) ([]*domain.Alert, error) {
+func (r *AlertRepository) FindByStatus(orgID string, status domain.AlertStatus, limit, offset int) ([]*domain.Alert, error) {
 	query := `
 		SELECT 
 			id, title, description, severity, status,
 			source, created_at, updated_at, resolved_at
 		FROM alerts
-		WHERE status = $1
+		WHERE organization_id = $1 AND status = $2
 		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`
+		LIMIT $3 OFFSET $4`
 
-	return r.findAlertsByQuery(query, status, limit, offset)
-}
-
-func (r *AlertRepository) FindBySeverity(severity domain.AlertSeverity, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE severity = $1
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`
-
-	return r.findAlertsByQuery(query, severity, limit, offset)
-}
-
-func (r *AlertRepository) findAlertsByQuery(query string, param interface{}, limit, offset int) ([]*domain.Alert, error) {
-	rows, err := r.db.Query(query, param, limit, offset)
+	rows, err := r.db.Query(query, orgID, status, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find alerts: %w", err)
+		return nil, fmt.Errorf("failed to find alerts by status: %w", err)
 	}
 	defer rows.Close()
 
+	return r.scanAlerts(rows)
+}
+
+func (r *AlertRepository) FindBySeverity(orgID string, severity domain.AlertSeverity, limit, offset int) ([]*domain.Alert, error) {
+	query := `
+		SELECT 
+			id, title, description, severity, status,
+			source, created_at, updated_at, resolved_at
+		FROM alerts
+		WHERE organization_id = $1 AND severity = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.Query(query, orgID, severity, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find alerts by severity: %w", err)
+	}
+	defer rows.Close()
+
+	return r.scanAlerts(rows)
+}
+
+func (r *AlertRepository) CountBySeverity(orgID string, severity domain.AlertSeverity) (int64, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM alerts
+		WHERE organization_id = $1 AND severity = $2`
+
+	var count int64
+	err := r.db.QueryRow(query, orgID, severity).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count alerts by severity: %w", err)
+	}
+	return count, nil
+}
+
+func (r *AlertRepository) CountByStatus(orgID string, status domain.AlertStatus) (int64, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM alerts
+		WHERE organization_id = $1 AND status = $2`
+
+	var count int64
+	err := r.db.QueryRow(query, orgID, status).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count alerts by status: %w", err)
+	}
+	return count, nil
+}
+
+func (r *AlertRepository) CountByTimeRange(orgID string, start, end time.Time) (int64, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM alerts
+		WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3`
+
+	var count int64
+	err := r.db.QueryRow(query, orgID, start, end).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count alerts by time range: %w", err)
+	}
+	return count, nil
+}
+
+func (r *AlertRepository) CountBySource(orgID string, source string) (int64, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM alerts
+		WHERE organization_id = $1 AND source = $2`
+
+	var count int64
+	err := r.db.QueryRow(query, orgID, source).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("failed to count alerts by source: %w", err)
+	}
+	return count, nil
+}
+
+func (r *AlertRepository) Delete(orgID, id string) error {
+	// Start a transaction since we need to delete from multiple tables
+	tx, err := r.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback() // Rollback if we return with error
+
+	// Delete alert metadata
+	_, err = tx.Exec(`DELETE FROM alert_metadata WHERE alert_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete alert metadata: %w", err)
+	}
+
+	// Delete alert-log relations
+	_, err = tx.Exec(`DELETE FROM alert_logs WHERE alert_id = $1`, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete alert-log relations: %w", err)
+	}
+
+	// Delete the alert
+	result, err := tx.Exec(`DELETE FROM alerts WHERE organization_id = $1 AND id = $2`, orgID, id)
+	if err != nil {
+		return fmt.Errorf("failed to delete alert: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("alert not found: %s", id)
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *AlertRepository) FindBySource(orgID string, source string, limit, offset int) ([]*domain.Alert, error) {
+	query := `
+		SELECT 
+			id, title, description, severity, status,
+			source, created_at, updated_at, resolved_at
+		FROM alerts
+		WHERE organization_id = $1 AND source = $2
+		ORDER BY created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	rows, err := r.db.Query(query, orgID, source, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find alerts by source: %w", err)
+	}
+	defer rows.Close()
+
+	var alerts []*domain.Alert
+	for rows.Next() {
+		alert := &domain.Alert{}
+		err := rows.Scan(
+			&alert.ID,
+			&alert.Title,
+			&alert.Description,
+			&alert.Severity,
+			&alert.Status,
+			&alert.Source,
+			&alert.CreatedAt,
+			&alert.UpdatedAt,
+			&alert.ResolvedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan alert: %w", err)
+		}
+
+		// Load related logs
+		alert.RelatedLogs, err = r.getRelatedLogs(alert.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get related logs: %w", err)
+		}
+
+		// Load metadata
+		alert.Metadata, err = r.getAlertMetadata(alert.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get alert metadata: %w", err)
+		}
+
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
+func (r *AlertRepository) ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*domain.Alert, error) {
+	query := `
+		SELECT 
+			id, title, description, severity, status,
+			source, created_at, updated_at, resolved_at
+		FROM alerts
+		WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3
+		ORDER BY created_at DESC
+		LIMIT $4 OFFSET $5`
+
+	rows, err := r.db.Query(query, orgID, start, end, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list alerts by time range: %w", err)
+	}
+	defer rows.Close()
+
+	var alerts []*domain.Alert
+	for rows.Next() {
+		alert := &domain.Alert{}
+		err := rows.Scan(
+			&alert.ID,
+			&alert.Title,
+			&alert.Description,
+			&alert.Severity,
+			&alert.Status,
+			&alert.Source,
+			&alert.CreatedAt,
+			&alert.UpdatedAt,
+			&alert.ResolvedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan alert: %w", err)
+		}
+
+		// Load related logs
+		alert.RelatedLogs, err = r.getRelatedLogs(alert.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get related logs: %w", err)
+		}
+
+		// Load metadata
+		alert.Metadata, err = r.getAlertMetadata(alert.ID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get alert metadata: %w", err)
+		}
+
+		alerts = append(alerts, alert)
+	}
+
+	return alerts, nil
+}
+
+// Helper function to scan alert rows into alert structs
+func (r *AlertRepository) scanAlerts(rows *sql.Rows) ([]*domain.Alert, error) {
 	var alerts []*domain.Alert
 	for rows.Next() {
 		alert := &domain.Alert{}
