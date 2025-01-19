@@ -40,29 +40,44 @@ func (s AlertStatus) IsValid() bool {
 }
 
 type Alert struct {
-	ID          string        `json:"id"`
-	Title       string        `json:"title"`
-	Description string        `json:"description"`
-	Severity    AlertSeverity `json:"severity"`
-	Status      AlertStatus   `json:"status"`
-	Source      string        `json:"source"`
-	CreatedAt   time.Time     `json:"created_at"`
-	UpdatedAt   time.Time     `json:"updated_at"`
-	ResolvedAt  *time.Time    `json:"resolved_at,omitempty"`
-
-	// Reference to related logs
-	RelatedLogs []string `json:"related_logs,omitempty"`
-
-	// Additional context about the alert
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	ID             string                 `json:"id"`
+	OrganizationID string                 `json:"organization_id"`
+	Title          string                 `json:"title"`
+	Description    string                 `json:"description"`
+	Severity       AlertSeverity          `json:"severity"`
+	Status         AlertStatus            `json:"status"`
+	Source         string                 `json:"source"`
+	CreatedAt      time.Time              `json:"created_at"`
+	UpdatedAt      time.Time              `json:"updated_at"`
+	ResolvedAt     *time.Time             `json:"resolved_at,omitempty"`
+	RelatedLogs    []string               `json:"related_logs,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // AlertRepository defines the interface for alert storage operations
 type AlertRepository interface {
+	// Core operations
 	Store(alert *Alert) error
-	FindByID(id string) (*Alert, error)
-	List(limit, offset int) ([]*Alert, error)
 	Update(alert *Alert) error
-	FindByStatus(status AlertStatus, limit, offset int) ([]*Alert, error)
-	FindBySeverity(severity AlertSeverity, limit, offset int) ([]*Alert, error)
+	Delete(orgID, id string) error
+
+	// Retrieval operations
+	FindByID(orgID, id string) (*Alert, error)
+	List(orgID string, limit, offset int) ([]*Alert, error)
+
+	// Status-based queries
+	FindByStatus(orgID string, status AlertStatus, limit, offset int) ([]*Alert, error)
+	CountByStatus(orgID string, status AlertStatus) (int64, error)
+
+	// Severity-based queries
+	FindBySeverity(orgID string, severity AlertSeverity, limit, offset int) ([]*Alert, error)
+	CountBySeverity(orgID string, severity AlertSeverity) (int64, error)
+
+	// Time-based queries
+	ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*Alert, error)
+	CountByTimeRange(orgID string, start, end time.Time) (int64, error)
+
+	// Source-based queries
+	FindBySource(orgID string, source string, limit, offset int) ([]*Alert, error)
+	CountBySource(orgID string, source string) (int64, error)
 }

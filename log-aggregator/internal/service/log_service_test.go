@@ -26,24 +26,45 @@ func (m *MockLogRepository) StoreBatch(logs []*domain.Log) error {
 	return args.Error(0)
 }
 
-func (m *MockLogRepository) FindByID(id string) (*domain.Log, error) {
-	args := m.Called(id)
+func (m *MockLogRepository) FindByID(orgID, id string) (*domain.Log, error) {
+	args := m.Called(orgID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Log), args.Error(1)
 }
 
-func (m *MockLogRepository) List(limit, offset int) ([]*domain.Log, error) {
-	args := m.Called(limit, offset)
+func (m *MockLogRepository) List(orgID string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]*domain.Log), args.Error(1)
 }
 
-func (m *MockLogRepository) ListByTimeRange(start, end time.Time, limit, offset int) ([]*domain.Log, error) {
-	args := m.Called(start, end, limit, offset)
+func (m *MockLogRepository) ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, start, end, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
+
+func (m *MockLogRepository) CountByTimeRange(orgID string, start, end time.Time) (int64, error) {
+	args := m.Called(orgID, start, end)
+	return args.Get(0).(int64), args.Error(1)
+}
+
+func (m *MockLogRepository) ListByHost(orgID string, host string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, host, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
+
+func (m *MockLogRepository) ListByLevel(orgID string, level string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, level, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -53,9 +74,10 @@ func (m *MockLogRepository) ListByTimeRange(start, end time.Time, limit, offset 
 // getTestConfig returns a standard test configuration
 func getTestConfig() LogServiceConfig {
 	return LogServiceConfig{
-		Environment: "test",
-		Application: "log-aggregator",
-		Component:   "test-component",
+		OrganizationID: "test-org",
+		Environment:    "test",
+		Application:    "log-aggregator",
+		Component:      "test-component",
 	}
 }
 
@@ -231,9 +253,10 @@ func TestLogService_GetLog(t *testing.T) {
 			name: "Successfully get log",
 			id:   "test-id",
 			setupMock: func(m *MockLogRepository) {
-				m.On("FindByID", "test-id").Return(&domain.Log{
-					ID:   "test-id",
-					Host: "test-host",
+				m.On("FindByID", "test-org", "test-id").Return(&domain.Log{
+					ID:             "test-id",
+					OrganizationID: "test-org",
+					Host:           "test-host",
 				}, nil)
 			},
 			validateLog: func(t *testing.T, log *domain.Log) {
@@ -245,7 +268,7 @@ func TestLogService_GetLog(t *testing.T) {
 			name: "Log not found",
 			id:   "non-existent-id",
 			setupMock: func(m *MockLogRepository) {
-				m.On("FindByID", "non-existent-id").Return(nil, errors.New("log not found"))
+				m.On("FindByID", "test-org", "non-existent-id").Return(nil, errors.New("log not found"))
 			},
 			expectError:   true,
 			expectedError: "operation failed after 3 attempts: log not found",
@@ -293,9 +316,9 @@ func TestLogService_ListLogs(t *testing.T) {
 			limit:  10,
 			offset: 0,
 			setupMock: func(m *MockLogRepository) {
-				m.On("List", 10, 0).Return([]*domain.Log{
-					{ID: "1", Host: "host-1"},
-					{ID: "2", Host: "host-2"},
+				m.On("List", "test-org", 10, 0).Return([]*domain.Log{
+					{ID: "1", OrganizationID: "test-org", Host: "host-1"},
+					{ID: "2", OrganizationID: "test-org", Host: "host-2"},
 				}, nil)
 			},
 			validateLogs: func(t *testing.T, logs []*domain.Log) {
@@ -309,7 +332,7 @@ func TestLogService_ListLogs(t *testing.T) {
 			limit:  10,
 			offset: 0,
 			setupMock: func(m *MockLogRepository) {
-				m.On("List", 10, 0).Return(nil, errors.New("db error"))
+				m.On("List", "test-org", 10, 0).Return(nil, errors.New("db error"))
 			},
 			expectError:   true,
 			expectedError: "operation failed after 3 attempts: db error",
@@ -364,9 +387,9 @@ func TestLogService_ListByTimeRange(t *testing.T) {
 			limit:  10,
 			offset: 0,
 			setupMock: func(m *MockLogRepository) {
-				m.On("ListByTimeRange", start, end, 10, 0).Return([]*domain.Log{
-					{ID: "1", Host: "host-1", Timestamp: start.Add(15 * time.Minute)},
-					{ID: "2", Host: "host-2", Timestamp: start.Add(30 * time.Minute)},
+				m.On("ListByTimeRange", "test-org", start, end, 10, 0).Return([]*domain.Log{
+					{ID: "1", OrganizationID: "test-org", Host: "host-1", Timestamp: start.Add(15 * time.Minute)},
+					{ID: "2", OrganizationID: "test-org", Host: "host-2", Timestamp: start.Add(30 * time.Minute)},
 				}, nil)
 			},
 			validateLogs: func(t *testing.T, logs []*domain.Log) {
@@ -384,7 +407,7 @@ func TestLogService_ListByTimeRange(t *testing.T) {
 			limit:  10,
 			offset: 0,
 			setupMock: func(m *MockLogRepository) {
-				m.On("ListByTimeRange", start, end, 10, 0).Return(nil, errors.New("db error"))
+				m.On("ListByTimeRange", "test-org", start, end, 10, 0).Return(nil, errors.New("db error"))
 			},
 			expectError:   true,
 			expectedError: "operation failed after 3 attempts: db error",

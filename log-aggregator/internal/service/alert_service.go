@@ -27,19 +27,22 @@ type AlertService struct {
 	thresholds   AlertThresholds
 	systemMemory int64
 	timeNowFn    func() time.Time
+	config       AlertServiceConfig
 }
 
 // AlertServiceConfig allows customizing service behavior
 type AlertServiceConfig struct {
-	SystemMemory int64
-	TimeNowFn    func() time.Time
+	OrganizationID string
+	SystemMemory   int64
+	TimeNowFn      func() time.Time
 }
 
 func NewAlertService(repo domain.AlertRepository, config *AlertServiceConfig) *AlertService {
 	if config == nil {
 		config = &AlertServiceConfig{
-			SystemMemory: 16 * 1024 * 1024 * 1024, // 16GB default
-			TimeNowFn:    time.Now,
+			OrganizationID: "",
+			SystemMemory:   16 * 1024 * 1024 * 1024, // 16GB default
+			TimeNowFn:      time.Now,
 		}
 	}
 	return &AlertService{
@@ -47,6 +50,7 @@ func NewAlertService(repo domain.AlertRepository, config *AlertServiceConfig) *A
 		thresholds:   DefaultThresholds,
 		systemMemory: config.SystemMemory,
 		timeNowFn:    config.TimeNowFn,
+		config:       *config,
 	}
 }
 
@@ -132,16 +136,17 @@ func (s *AlertService) createAlert(
 ) *domain.Alert {
 	now := s.timeNowFn()
 	return &domain.Alert{
-		ID:          uuid.New().String(),
-		Title:       title,
-		Description: description,
-		Severity:    severity,
-		Status:      domain.StatusOpen,
-		Source:      source,
-		CreatedAt:   now,
-		UpdatedAt:   now,
-		RelatedLogs: relatedLogs,
-		Metadata:    metadata,
+		ID:             uuid.New().String(),
+		OrganizationID: s.config.OrganizationID,
+		Title:          title,
+		Description:    description,
+		Severity:       severity,
+		Status:         domain.StatusOpen,
+		Source:         source,
+		CreatedAt:      now,
+		UpdatedAt:      now,
+		RelatedLogs:    relatedLogs,
+		Metadata:       metadata,
 	}
 }
 
@@ -152,7 +157,7 @@ func (s *AlertService) getSystemTotalMemory() int64 {
 
 // UpdateAlertStatus updates the status of an alert
 func (s *AlertService) UpdateAlertStatus(id string, status domain.AlertStatus) error {
-	existingAlert, err := s.repo.FindByID(id)
+	existingAlert, err := s.repo.FindByID(s.config.OrganizationID, id)
 	if err != nil {
 		return fmt.Errorf("failed to find alert: %w", err)
 	}
@@ -172,22 +177,47 @@ func (s *AlertService) UpdateAlertStatus(id string, status domain.AlertStatus) e
 
 // GetAlert retrieves an alert by ID
 func (s *AlertService) GetAlert(id string) (*domain.Alert, error) {
-	return s.repo.FindByID(id)
+	return s.repo.FindByID(s.config.OrganizationID, id)
 }
 
 // ListAlerts retrieves alerts with pagination
 func (s *AlertService) ListAlerts(limit, offset int) ([]*domain.Alert, error) {
-	return s.repo.List(limit, offset)
+	return s.repo.List(s.config.OrganizationID, limit, offset)
 }
 
 // ListAlertsByStatus retrieves alerts filtered by status
 func (s *AlertService) ListAlertsByStatus(status domain.AlertStatus, limit, offset int) ([]*domain.Alert, error) {
-	return s.repo.FindByStatus(status, limit, offset)
+	return s.repo.FindByStatus(s.config.OrganizationID, status, limit, offset)
 }
 
 // ListAlertsBySeverity retrieves alerts filtered by severity
 func (s *AlertService) ListAlertsBySeverity(severity domain.AlertSeverity, limit, offset int) ([]*domain.Alert, error) {
-	return s.repo.FindBySeverity(severity, limit, offset)
+	return s.repo.FindBySeverity(s.config.OrganizationID, severity, limit, offset)
+}
+
+// ListAlertsBySource retrieves alerts filtered by source
+func (s *AlertService) ListAlertsBySource(source string, limit, offset int) ([]*domain.Alert, error) {
+	return s.repo.FindBySource(s.config.OrganizationID, source, limit, offset)
+}
+
+// ListAlertsByTimeRange retrieves alerts within a time range
+func (s *AlertService) ListAlertsByTimeRange(start, end time.Time, limit, offset int) ([]*domain.Alert, error) {
+	return s.repo.ListByTimeRange(s.config.OrganizationID, start, end, limit, offset)
+}
+
+// CountAlertsByTimeRange returns the total number of alerts within a time range
+func (s *AlertService) CountAlertsByTimeRange(start, end time.Time) (int64, error) {
+	return s.repo.CountByTimeRange(s.config.OrganizationID, start, end)
+}
+
+// CountAlertsByStatus returns the total number of alerts with a specific status
+func (s *AlertService) CountAlertsByStatus(status domain.AlertStatus) (int64, error) {
+	return s.repo.CountByStatus(s.config.OrganizationID, status)
+}
+
+// CountAlertsBySeverity returns the total number of alerts with a specific severity
+func (s *AlertService) CountAlertsBySeverity(severity domain.AlertSeverity) (int64, error) {
+	return s.repo.CountBySeverity(s.config.OrganizationID, severity)
 }
 
 // AlertTrends represents trend analysis data for alerts
@@ -201,12 +231,7 @@ type AlertTrends struct {
 
 // GetAlertTrends analyzes alerts within a time range to provide trend information
 func (s *AlertService) GetAlertTrends(start, end time.Time) (*AlertTrends, error) {
-	// Get all alerts within the time range
-	// Note: This is a simplified implementation. In production, you'd want to:
-	// 1. Add a repository method to get alerts by time range
-	// 2. Add proper pagination to handle large datasets
-	// 3. Potentially use database aggregations for better performance
-	alerts, err := s.repo.List(1000, 0) // Get last 1000 alerts as a sample
+	alerts, err := s.ListAlertsByTimeRange(start, end, 1000, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve alerts: %w", err)
 	}
@@ -219,24 +244,11 @@ func (s *AlertService) GetAlertTrends(start, end time.Time) (*AlertTrends, error
 	}
 
 	for _, alert := range alerts {
-		// Only consider alerts within the time range
-		if alert.CreatedAt.Before(start) || alert.CreatedAt.After(end) {
-			continue
-		}
-
 		trends.TotalAlerts++
-
-		// Count by severity
 		trends.AlertsBySeverity[string(alert.Severity)]++
-
-		// Count by status
 		trends.AlertsByStatus[string(alert.Status)]++
-
-		// Count by hour of day (for time distribution analysis)
 		hour := alert.CreatedAt.Format("15:00")
 		trends.TimeDistribution[hour]++
-
-		// Count by source
 		trends.TopSources[alert.Source]++
 	}
 

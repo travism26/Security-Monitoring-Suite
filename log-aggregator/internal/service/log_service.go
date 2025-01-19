@@ -15,10 +15,11 @@ const (
 )
 
 type LogServiceConfig struct {
-	Environment string
-	Application string
-	Component   string
-	Cache       struct {
+	OrganizationID string
+	Environment    string
+	Application    string
+	Component      string
+	Cache          struct {
 		Enabled      bool
 		TTL          time.Duration
 		TimeRangeTTL time.Duration
@@ -61,6 +62,9 @@ func (s *LogService) retryOperation(operation func() error) error {
 }
 
 func (s *LogService) StoreLog(log *domain.Log) error {
+	// Set organization ID from config
+	log.OrganizationID = s.config.OrganizationID
+
 	// Enrich log with environment information
 	log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
 	log.ProcessedCount++
@@ -79,7 +83,7 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 
 	// If store was successful and cache is enabled, invalidate related cache entries
 	if err == nil && s.cache != nil {
-		s.cache.Delete(s.keyGenerator.ForLog(log.ID))
+		s.cache.Delete(s.keyGenerator.ForLog(s.config.OrganizationID, log.ID))
 		// Clear list caches as they might be affected
 		s.cache.Clear() // TODO: Implement more granular cache invalidation
 	}
@@ -90,6 +94,9 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	// Process metadata and enrich each log in the batch
 	for _, log := range logs {
+		// Set organization ID from config
+		log.OrganizationID = s.config.OrganizationID
+
 		// Enrich log with environment information
 		log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
 		log.ProcessedCount++
@@ -110,7 +117,7 @@ func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	// If store was successful and cache is enabled, invalidate affected cache entries
 	if err == nil && s.cache != nil {
 		for _, log := range logs {
-			s.cache.Delete(s.keyGenerator.ForLog(log.ID))
+			s.cache.Delete(s.keyGenerator.ForLog(s.config.OrganizationID, log.ID))
 		}
 		// Clear list caches as they might be affected
 		s.cache.Clear() // TODO: Implement more granular cache invalidation
@@ -122,7 +129,8 @@ func (s *LogService) StoreBatch(logs []*domain.Log) error {
 func (s *LogService) GetLog(id string) (*domain.Log, error) {
 	if s.cache != nil {
 		// Try to get from cache first
-		if cached, found := s.cache.Get(s.keyGenerator.ForLog(id)); found {
+		cacheKey := s.keyGenerator.ForLog(s.config.OrganizationID, id)
+		if cached, found := s.cache.Get(cacheKey); found {
 			if log, ok := cached.(*domain.Log); ok {
 				return log, nil
 			}
@@ -133,14 +141,14 @@ func (s *LogService) GetLog(id string) (*domain.Log, error) {
 	var log *domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		log, err = s.repo.FindByID(id)
+		log, err = s.repo.FindByID(s.config.OrganizationID, id)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && log != nil {
-			s.cache.Set(s.keyGenerator.ForLog(id), log, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForLog(s.config.OrganizationID, id), log, s.config.Cache.TTL)
 		}
 		return nil
 	})
@@ -150,7 +158,8 @@ func (s *LogService) GetLog(id string) (*domain.Log, error) {
 func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
 	if s.cache != nil {
 		// Try to get from cache first
-		if cached, found := s.cache.Get(s.keyGenerator.ForLogList(limit, offset)); found {
+		cacheKey := s.keyGenerator.ForLogList(s.config.OrganizationID, limit, offset)
+		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
 			}
@@ -161,14 +170,14 @@ func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.List(limit, offset)
+		logs, err = s.repo.List(s.config.OrganizationID, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForLogList(limit, offset), logs, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForLogList(s.config.OrganizationID, limit, offset), logs, s.config.Cache.TTL)
 		}
 		return nil
 	})
@@ -183,7 +192,8 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 
 	if s.cache != nil {
 		// Try to get from cache first
-		if cached, found := s.cache.Get(s.keyGenerator.ForTimeRange(start, end, limit, offset)); found {
+		cacheKey := s.keyGenerator.ForTimeRange(s.config.OrganizationID, start, end, limit, offset)
+		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
 			}
@@ -194,14 +204,99 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.ListByTimeRange(start, end, limit, offset)
+		logs, err = s.repo.ListByTimeRange(s.config.OrganizationID, start, end, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForTimeRange(start, end, limit, offset), logs, s.config.Cache.TimeRangeTTL)
+			s.cache.Set(s.keyGenerator.ForTimeRange(s.config.OrganizationID, start, end, limit, offset), logs, s.config.Cache.TimeRangeTTL)
+		}
+		return nil
+	})
+	return logs, err
+}
+
+// CountByTimeRange returns the total number of logs within a time range
+func (s *LogService) CountByTimeRange(start, end time.Time) (int64, error) {
+	if start.After(end) {
+		return 0, fmt.Errorf("invalid time range: start time %v is after end time %v", start, end)
+	}
+
+	if s.cache != nil {
+		cacheKey := s.keyGenerator.ForTimeRangeCount(s.config.OrganizationID, start, end)
+		if cached, found := s.cache.Get(cacheKey); found {
+			if count, ok := cached.(int64); ok {
+				return count, nil
+			}
+		}
+	}
+
+	var count int64
+	err := s.retryOperation(func() error {
+		var err error
+		count, err = s.repo.CountByTimeRange(s.config.OrganizationID, start, end)
+		if err != nil {
+			return err
+		}
+
+		if s.cache != nil {
+			s.cache.Set(s.keyGenerator.ForTimeRangeCount(s.config.OrganizationID, start, end), count, s.config.Cache.TTL)
+		}
+		return nil
+	})
+	return count, err
+}
+
+// ListByHost retrieves logs for a specific host
+func (s *LogService) ListByHost(host string, limit, offset int) ([]*domain.Log, error) {
+	if s.cache != nil {
+		cacheKey := s.keyGenerator.ForHostLogs(s.config.OrganizationID, host, limit, offset)
+		if cached, found := s.cache.Get(cacheKey); found {
+			if logs, ok := cached.([]*domain.Log); ok {
+				return logs, nil
+			}
+		}
+	}
+
+	var logs []*domain.Log
+	err := s.retryOperation(func() error {
+		var err error
+		logs, err = s.repo.ListByHost(s.config.OrganizationID, host, limit, offset)
+		if err != nil {
+			return err
+		}
+
+		if s.cache != nil && logs != nil {
+			s.cache.Set(s.keyGenerator.ForHostLogs(s.config.OrganizationID, host, limit, offset), logs, s.config.Cache.TTL)
+		}
+		return nil
+	})
+	return logs, err
+}
+
+// ListByLevel retrieves logs of a specific level
+func (s *LogService) ListByLevel(level string, limit, offset int) ([]*domain.Log, error) {
+	if s.cache != nil {
+		cacheKey := s.keyGenerator.ForLevelLogs(s.config.OrganizationID, level, limit, offset)
+		if cached, found := s.cache.Get(cacheKey); found {
+			if logs, ok := cached.([]*domain.Log); ok {
+				return logs, nil
+			}
+		}
+	}
+
+	var logs []*domain.Log
+	err := s.retryOperation(func() error {
+		var err error
+		logs, err = s.repo.ListByLevel(s.config.OrganizationID, level, limit, offset)
+		if err != nil {
+			return err
+		}
+
+		if s.cache != nil && logs != nil {
+			s.cache.Set(s.keyGenerator.ForLevelLogs(s.config.OrganizationID, level, limit, offset), logs, s.config.Cache.TTL)
 		}
 		return nil
 	})
