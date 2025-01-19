@@ -31,7 +31,7 @@ func (m *MockLogRepository) StoreBatch(logs []*domain.Log) error {
 	return args.Error(0)
 }
 
-func (m *MockLogRepository) FindByID(id string) (*domain.Log, error) {
+func (m *MockLogRepository) FindByID(organization_id, id string) (*domain.Log, error) {
 	args := m.Called(id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -39,15 +39,40 @@ func (m *MockLogRepository) FindByID(id string) (*domain.Log, error) {
 	return args.Get(0).(*domain.Log), args.Error(1)
 }
 
-func (m *MockLogRepository) List(limit, offset int) ([]*domain.Log, error) {
+func (m *MockLogRepository) List(organization_id string, limit, offset int) ([]*domain.Log, error) {
 	args := m.Called(limit, offset)
 	return args.Get(0).([]*domain.Log), args.Error(1)
 }
 
-func (m *MockLogRepository) ListByTimeRange(start, end time.Time, limit, offset int) ([]*domain.Log, error) {
+func (m *MockLogRepository) ListByTimeRange(organization_id string, start, end time.Time, limit, offset int) ([]*domain.Log, error) {
 	args := m.Called(start, end, limit, offset)
 	return args.Get(0).([]*domain.Log), args.Error(1)
 }
+
+func (m *MockLogRepository) CountByTimeRange(orgID string, start, end time.Time) (int64, error) {
+	return 1, nil
+}
+
+func (m *MockLogRepository) ListByHost(orgID string, host string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, host, limit, offset)
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
+
+func (m *MockLogRepository) ListByLevel(orgID string, level string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(orgID, level, limit, offset)
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
+
+/* mtravis notes: missing methods I need to add to mock repo
+// CountByTimeRange returns the total number of logs within a time range for an organization
+	CountByTimeRange(orgID string, start, end time.Time) (int64, error)
+
+	// ListByHost retrieves logs for a specific host within an organization
+	ListByHost(orgID string, host string, limit, offset int) ([]*Log, error)
+
+	// ListByLevel retrieves logs of a specific level within an organization
+	ListByLevel(orgID string, level string, limit, offset int) ([]*Log, error)
+*/
 
 func setupTest() (*gin.Engine, *MockLogRepository) {
 	gin.SetMode(gin.TestMode)
