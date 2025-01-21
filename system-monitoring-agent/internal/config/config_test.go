@@ -21,59 +21,147 @@ func TestLoadConfig(t *testing.T) {
 			name:       "Valid config file",
 			configFile: "config.yaml",
 			configData: `
+Version: "1.0.0"
+Tenant:
+  ID: "tenant-123"
+  APIKey: "01234567890123456789012345678901"
+  Endpoints:
+    Metrics: "http://localhost:8080/metrics"
+    HealthCheck: "http://localhost:8080/health"
+    KeyValidation: "http://localhost:8080/validate"
 LogFilePath: /var/log/agent.log
+LogSettings:
+  Level: "info"
+  Format: "json"
+  MaxSize: 100
+  MaxBackups: 3
+  MaxAge: 28
+  Compress: true
 Interval: 30
+Kafka:
+  Brokers:
+    - "localhost:9092"
+  Topic: "system-metrics"
+  TenantTopic: "tenant-{id}-metrics"
+  SecurityProtocol: "plaintext"
 Monitors:
   CPU: true
   Memory: true
   Disk: true
   Network: false
+  Process: true
 HTTP:
-  Endpoint: http://localhost:8080
-StorageDir: /data/metrics
+  Endpoint: "http://localhost:8080"
+  StorageDir: "/data/metrics"
+  RetryAttempts: 3
+  RetryDelay: 5
+  Timeout: 30
+  Headers:
+    TenantID: "X-Tenant-ID"
+    APIKey: "X-API-Key"
+StorageDir: "/data/metrics"
+Thresholds:
+  CPU: 80
+  Memory: 85
+  Disk: 90
+  NetworkUtilization: 80
+Storage:
+  MaxStoragePerTenant: 1024
+  RetentionPeriod: 7
+  CompressOldData: true
+Security:
+  EncryptData: true
+  ValidateSSL: true
+  AllowedIPs: []
 `,
 			expectError: false,
 			expected: Config{
+				Version: "1.0.0",
+				Tenant: TenantConfig{
+					ID:     "tenant-123",
+					APIKey: "01234567890123456789012345678901",
+					Endpoints: struct {
+						Metrics       string `yaml:"Metrics"`
+						HealthCheck   string `yaml:"HealthCheck"`
+						KeyValidation string `yaml:"KeyValidation"`
+					}{
+						Metrics:       "http://localhost:8080/metrics",
+						HealthCheck:   "http://localhost:8080/health",
+						KeyValidation: "http://localhost:8080/validate",
+					},
+				},
 				LogFilePath: "/var/log/agent.log",
-				Interval:    30,
+				LogSettings: LogSettings{
+					Level:      "info",
+					Format:     "json",
+					MaxSize:    100,
+					MaxBackups: 3,
+					MaxAge:     28,
+					Compress:   true,
+				},
+				Interval: 30,
+				Kafka: KafkaConfig{
+					Brokers:          []string{"localhost:9092"},
+					Topic:            "system-metrics",
+					TenantTopic:      "tenant-{id}-metrics",
+					SecurityProtocol: "plaintext",
+				},
 				Monitors: struct {
 					CPU     bool `yaml:"CPU"`
 					Memory  bool `yaml:"Memory"`
 					Disk    bool `yaml:"Disk"`
 					Network bool `yaml:"Network"`
+					Process bool `yaml:"Process"`
 				}{
 					CPU:     true,
 					Memory:  true,
 					Disk:    true,
 					Network: false,
+					Process: true,
 				},
 				HTTP: HTTPConfig{
-					Endpoint: "http://localhost:8080",
+					Endpoint:      "http://localhost:8080",
+					StorageDir:    "/data/metrics",
+					RetryAttempts: 3,
+					RetryDelay:    5,
+					Timeout:       30,
+					Headers: struct {
+						TenantID string `yaml:"TenantID"`
+						APIKey   string `yaml:"APIKey"`
+					}{
+						TenantID: "X-Tenant-ID",
+						APIKey:   "X-API-Key",
+					},
 				},
 				StorageDir: "/data/metrics",
+				Thresholds: struct {
+					CPU                int `yaml:"CPU"`
+					Memory             int `yaml:"Memory"`
+					Disk               int `yaml:"Disk"`
+					NetworkUtilization int `yaml:"NetworkUtilization"`
+				}{
+					CPU:                80,
+					Memory:             85,
+					Disk:               90,
+					NetworkUtilization: 80,
+				},
+				Storage: StorageConfig{
+					MaxStoragePerTenant: 1024,
+					RetentionPeriod:     7,
+					CompressOldData:     true,
+				},
+				Security: SecurityConfig{
+					EncryptData: true,
+					ValidateSSL: true,
+					AllowedIPs:  []string{},
+				},
 			},
 		},
 		{
 			name:        "Missing config file - use defaults",
 			configFile:  "missing_config.yaml",
 			configData:  "",
-			expectError: false,
-			expected: Config{
-				LogFilePath: "./agent.log",
-				Interval:    60,
-				Monitors: struct {
-					CPU     bool `yaml:"CPU"`
-					Memory  bool `yaml:"Memory"`
-					Disk    bool `yaml:"Disk"`
-					Network bool `yaml:"Network"`
-				}{
-					CPU:     true,
-					Memory:  true,
-					Disk:    false,
-					Network: false,
-				},
-				StorageDir: "./metrics_data",
-			},
+			expectError: true, // Now we expect an error due to missing required tenant fields
 		},
 	}
 
@@ -103,7 +191,18 @@ StorageDir: /data/metrics
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, tt.expected, *cfg)
+				assert.Equal(t, tt.expected.Version, cfg.Version)
+				assert.Equal(t, tt.expected.Tenant, cfg.Tenant)
+				assert.Equal(t, tt.expected.LogFilePath, cfg.LogFilePath)
+				assert.Equal(t, tt.expected.LogSettings, cfg.LogSettings)
+				assert.Equal(t, tt.expected.Interval, cfg.Interval)
+				assert.Equal(t, tt.expected.Kafka, cfg.Kafka)
+				assert.Equal(t, tt.expected.Monitors, cfg.Monitors)
+				assert.Equal(t, tt.expected.HTTP, cfg.HTTP)
+				assert.Equal(t, tt.expected.StorageDir, cfg.StorageDir)
+				assert.Equal(t, tt.expected.Thresholds, cfg.Thresholds)
+				assert.Equal(t, tt.expected.Storage, cfg.Storage)
+				assert.Equal(t, tt.expected.Security, cfg.Security)
 			}
 		})
 	}

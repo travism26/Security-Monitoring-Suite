@@ -1,21 +1,73 @@
-LogFilePath: './agent.log'
+Tenant:
+  # Unique identifier for the organization/tenant
+  ID: ""
+  # API key for authentication
+  APIKey: ""
+  # Tenant-specific endpoint overrides (optional)
+  Endpoints:
+    Metrics: "http://localhost:30001/api/v1/system-metrics/ingest"
+    HealthCheck: "http://localhost:30001/api/v1/health"
+    KeyValidation: "http://localhost:30001/api/v1/validate-key"
+
+# General logging configuration
+LogFilePath: "./agent.log"
+LogSettings:
+  Level: "info"
+  Format: "json"
+  MaxSize: 100 # MB
+  MaxBackups: 3
+  MaxAge: 28 # days
+  Compress: true
+
+# Metrics collection interval in seconds
 Interval: 10
+
+# Kafka configuration
 Kafka:
   Brokers:
-    - 'localhost:9092'
-  Topic: 'system-metrics'
+    - "localhost:9092"
+  Topic: "system-metrics"
+  # Tenant-specific Kafka settings
+  TenantTopic: "tenant-{id}-metrics" # {id} will be replaced with tenant ID
+  SecurityProtocol: "plaintext"
+  SASLMechanism: ""
+  Username: ""
+  Password: ""
+
+# HTTP configuration
 HTTP:
-  # The endpoint to send metrics to if using node port
-  # http://localhost:30001/api/v1/system-metrics/ingest
-  # Locally: http://localhost:3000/api/v1/system-metrics/ingest
-  Endpoint: 'http://localhost:30001/api/v1/system-metrics/ingest'
-  StorageDir: './storage'
+  StorageDir: "./storage"
+  RetryAttempts: 3
+  RetryDelay: 5 # seconds
+  Timeout: 30 # seconds
+  Headers:
+    TenantID: "X-Tenant-ID"
+    APIKey: "X-API-Key"
+
+# Monitor configurations
 Monitors:
   CPU: true
   Memory: true
   Disk: true
   Network: true
+  Process: true # Added process monitoring
+
+# Alert thresholds (percentage)
 Thresholds:
-  CPU: 8
+  CPU: 80
   Memory: 85
   Disk: 90
+  NetworkUtilization: 80
+
+# Storage configuration
+Storage:
+  # Tenant-specific storage settings
+  MaxStoragePerTenant: 1024 # MB
+  RetentionPeriod: 7 # days
+  CompressOldData: true
+
+# Security settings
+Security:
+  EncryptData: true
+  ValidateSSL: true
+  AllowedIPs: [] # Empty array means no IP restrictions
