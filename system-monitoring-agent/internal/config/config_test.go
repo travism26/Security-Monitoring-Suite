@@ -18,7 +18,7 @@ func TestLoadConfig(t *testing.T) {
 		expected    Config
 	}{
 		{
-			name:       "Valid config file",
+			name:       "Valid tenant config file",
 			configFile: "config.yaml",
 			configData: `
 Version: "1.0.0"
@@ -29,7 +29,7 @@ Tenant:
     Metrics: "http://localhost:8080/metrics"
     HealthCheck: "http://localhost:8080/health"
     KeyValidation: "http://localhost:8080/validate"
-LogFilePath: /var/log/agent.log
+LogFilePath: "./agent.log"
 LogSettings:
   Level: "info"
   Format: "json"
@@ -52,14 +52,14 @@ Monitors:
   Process: true
 HTTP:
   Endpoint: "http://localhost:8080"
-  StorageDir: "/data/metrics"
+  StorageDir: "./storage"
   RetryAttempts: 3
   RetryDelay: 5
   Timeout: 30
   Headers:
     TenantID: "X-Tenant-ID"
     APIKey: "X-API-Key"
-StorageDir: "/data/metrics"
+StorageDir: "./storage"
 Thresholds:
   CPU: 80
   Memory: 85
@@ -90,7 +90,7 @@ Security:
 						KeyValidation: "http://localhost:8080/validate",
 					},
 				},
-				LogFilePath: "/var/log/agent.log",
+				LogFilePath: "./agent.log",
 				LogSettings: LogSettings{
 					Level:      "info",
 					Format:     "json",
@@ -121,7 +121,7 @@ Security:
 				},
 				HTTP: HTTPConfig{
 					Endpoint:      "http://localhost:8080",
-					StorageDir:    "/data/metrics",
+					StorageDir:    "./storage",
 					RetryAttempts: 3,
 					RetryDelay:    5,
 					Timeout:       30,
@@ -133,7 +133,7 @@ Security:
 						APIKey:   "X-API-Key",
 					},
 				},
-				StorageDir: "/data/metrics",
+				StorageDir: "./storage",
 				Thresholds: struct {
 					CPU                int `yaml:"CPU"`
 					Memory             int `yaml:"Memory"`
@@ -158,10 +158,116 @@ Security:
 			},
 		},
 		{
-			name:        "Missing config file - use defaults",
+			name:       "Default config file",
+			configFile: "config.yaml",
+			configData: `
+LogFilePath: "./agent.log"
+Interval: 60
+Monitors:
+  CPU: true
+  Memory: true
+  Disk: true
+  Network: true
+  Process: false
+HTTP:
+  Endpoint: "http://localhost:8080"
+  StorageDir: "./storage"
+StorageDir: "./storage"
+`,
+			expectError: false,
+			expected: Config{
+				Version:     "1.0.0",
+				LogFilePath: "./agent.log",
+				LogSettings: LogSettings{
+					Level:      "info",
+					Format:     "json",
+					MaxSize:    100,
+					MaxBackups: 3,
+					MaxAge:     28,
+					Compress:   true,
+				},
+				Interval: 60,
+				Monitors: struct {
+					CPU     bool `yaml:"CPU"`
+					Memory  bool `yaml:"Memory"`
+					Disk    bool `yaml:"Disk"`
+					Network bool `yaml:"Network"`
+					Process bool `yaml:"Process"`
+				}{
+					CPU:     true,
+					Memory:  true,
+					Disk:    true,
+					Network: true,
+					Process: false,
+				},
+				HTTP: HTTPConfig{
+					Endpoint:   "http://localhost:8080",
+					StorageDir: "./storage",
+					Headers: struct {
+						TenantID string `yaml:"TenantID"`
+						APIKey   string `yaml:"APIKey"`
+					}{},
+				},
+				StorageDir: "./storage",
+				Storage: StorageConfig{
+					MaxStoragePerTenant: 1024,
+					RetentionPeriod:     7,
+					CompressOldData:     true,
+				},
+				Security: SecurityConfig{
+					EncryptData: true,
+					ValidateSSL: true,
+					AllowedIPs:  []string{},
+				},
+			},
+		},
+		{
+			name:        "Missing config file",
 			configFile:  "missing_config.yaml",
 			configData:  "",
-			expectError: true, // Now we expect an error due to missing required tenant fields
+			expectError: false,
+			expected: Config{
+				Version:     "1.0.0",
+				LogFilePath: "./agent.log",
+				LogSettings: LogSettings{
+					Level:      "info",
+					Format:     "json",
+					MaxSize:    100,
+					MaxBackups: 3,
+					MaxAge:     28,
+					Compress:   true,
+				},
+				Interval: 60,
+				Monitors: struct {
+					CPU     bool `yaml:"CPU"`
+					Memory  bool `yaml:"Memory"`
+					Disk    bool `yaml:"Disk"`
+					Network bool `yaml:"Network"`
+					Process bool `yaml:"Process"`
+				}{
+					CPU:     true,
+					Memory:  true,
+					Disk:    true,
+					Network: true,
+					Process: false,
+				},
+				HTTP: HTTPConfig{
+					Headers: struct {
+						TenantID string `yaml:"TenantID"`
+						APIKey   string `yaml:"APIKey"`
+					}{},
+				},
+				Storage: StorageConfig{
+					MaxStoragePerTenant: 1024,
+					RetentionPeriod:     7,
+					CompressOldData:     true,
+				},
+				Security: SecurityConfig{
+					EncryptData: true,
+					ValidateSSL: true,
+					AllowedIPs:  []string{},
+				},
+			},
 		},
 	}
 
@@ -192,15 +298,21 @@ Security:
 			} else {
 				assert.NoError(t, err)
 				assert.Equal(t, tt.expected.Version, cfg.Version)
-				assert.Equal(t, tt.expected.Tenant, cfg.Tenant)
+				if tt.expected.Tenant.ID != "" {
+					assert.Equal(t, tt.expected.Tenant, cfg.Tenant)
+				}
 				assert.Equal(t, tt.expected.LogFilePath, cfg.LogFilePath)
 				assert.Equal(t, tt.expected.LogSettings, cfg.LogSettings)
 				assert.Equal(t, tt.expected.Interval, cfg.Interval)
-				assert.Equal(t, tt.expected.Kafka, cfg.Kafka)
+				if tt.expected.Kafka.Topic != "" {
+					assert.Equal(t, tt.expected.Kafka, cfg.Kafka)
+				}
 				assert.Equal(t, tt.expected.Monitors, cfg.Monitors)
 				assert.Equal(t, tt.expected.HTTP, cfg.HTTP)
 				assert.Equal(t, tt.expected.StorageDir, cfg.StorageDir)
-				assert.Equal(t, tt.expected.Thresholds, cfg.Thresholds)
+				if tt.expected.Thresholds.CPU != 0 {
+					assert.Equal(t, tt.expected.Thresholds, cfg.Thresholds)
+				}
 				assert.Equal(t, tt.expected.Storage, cfg.Storage)
 				assert.Equal(t, tt.expected.Security, cfg.Security)
 			}

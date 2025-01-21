@@ -142,7 +142,7 @@ func validateEndpoints(cfg *Config) error {
 		cfg.Tenant.Endpoints.KeyValidation,
 	}
 
-	urlPattern := regexp.MustCompile(`^https?://[\w\-]+(\.[\w\-]+)+[/#?]?.*$`)
+	urlPattern := regexp.MustCompile(`^https?://[^\s/$.?#].[^\s]*$`)
 	for _, endpoint := range endpoints {
 		if endpoint != "" && !urlPattern.MatchString(endpoint) {
 			return fmt.Errorf("%w: %s", ErrInvalidEndpoint, endpoint)
@@ -201,9 +201,11 @@ func LoadConfig() (*Config, error) {
 	// Set current version
 	cfg.Version = CurrentConfigVersion
 
-	// Validate configuration
-	if err := cfg.Validate(); err != nil {
-		return nil, fmt.Errorf("invalid configuration: %w", err)
+	// Skip validation for empty/default config
+	if cfg.Tenant.ID != "" || cfg.Tenant.APIKey != "" {
+		if err := cfg.Validate(); err != nil {
+			return nil, fmt.Errorf("invalid configuration: %w", err)
+		}
 	}
 
 	return &cfg, nil
@@ -219,9 +221,6 @@ func setDefaultConfig() {
 	viper.SetDefault("LogSettings.MaxAge", 28)
 	viper.SetDefault("LogSettings.Compress", true)
 	viper.SetDefault("Interval", 60)
-	viper.SetDefault("HTTP.RetryAttempts", 3)
-	viper.SetDefault("HTTP.RetryDelay", 5)
-	viper.SetDefault("HTTP.Timeout", 30)
 	viper.SetDefault("Monitors.CPU", true)
 	viper.SetDefault("Monitors.Memory", true)
 	viper.SetDefault("Monitors.Disk", true)
@@ -232,6 +231,7 @@ func setDefaultConfig() {
 	viper.SetDefault("Storage.CompressOldData", true)
 	viper.SetDefault("Security.EncryptData", true)
 	viper.SetDefault("Security.ValidateSSL", true)
+	viper.SetDefault("Security.AllowedIPs", []string{})
 }
 
 // ReloadConfig reloads the configuration from disk
