@@ -9,6 +9,77 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestAPIKeyManagement(t *testing.T) {
+	// Create a test config with API key
+	configData := `
+Version: "1.0.0"
+Tenant:
+  ID: "tenant-123"
+  APIKey: "01234567890123456789012345678901"
+  Endpoints:
+    Metrics: "http://localhost:8080/metrics"
+    HealthCheck: "http://localhost:8080/health"
+    KeyValidation: "http://localhost:8080/validate"
+`
+	// Create temp config directory
+	configDir := filepath.Join(t.TempDir(), "configs")
+	err := os.MkdirAll(configDir, 0755)
+	assert.NoError(t, err)
+
+	// Write config file
+	configPath := filepath.Join(configDir, "config.yaml")
+	err = os.WriteFile(configPath, []byte(configData), 0644)
+	assert.NoError(t, err)
+
+	// Set config path and load config
+	viper.Reset()
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(configDir)
+
+	cfg, err := LoadConfig()
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	// Test API key management
+	t.Run("GetAPIKey", func(t *testing.T) {
+		key := cfg.GetAPIKey()
+		assert.Equal(t, "01234567890123456789012345678901", key)
+	})
+
+	t.Run("GetAPIKeyStatus", func(t *testing.T) {
+		status := cfg.GetAPIKeyStatus()
+		assert.NotNil(t, status)
+		assert.True(t, status.IsValid)
+		assert.False(t, status.ExpiresAt.IsZero())
+	})
+
+	t.Run("ValidateAPIKey", func(t *testing.T) {
+		err := cfg.ValidateAPIKey()
+		assert.NoError(t, err)
+	})
+
+	// Test key rotation during config reload
+	newConfigData := `
+Version: "1.0.0"
+Tenant:
+  ID: "tenant-123"
+  APIKey: "98765432109876543210987654321098"
+  Endpoints:
+    Metrics: "http://localhost:8080/metrics"
+    HealthCheck: "http://localhost:8080/health"
+    KeyValidation: "http://localhost:8080/validate"
+`
+	err = os.WriteFile(configPath, []byte(newConfigData), 0644)
+	assert.NoError(t, err)
+
+	err = cfg.ReloadConfig()
+	assert.NoError(t, err)
+
+	key := cfg.GetAPIKey()
+	assert.Equal(t, "98765432109876543210987654321098", key)
+}
+
 func TestLoadConfig(t *testing.T) {
 	tests := []struct {
 		name        string

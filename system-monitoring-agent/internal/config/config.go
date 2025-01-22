@@ -7,8 +7,10 @@ import (
 	"log"
 	"regexp"
 	"sync"
+	"time"
 
 	"github.com/spf13/viper"
+	"github.com/travism26/system-monitoring-agent/internal/apikey"
 )
 
 // ConfigVersion tracks configuration changes
@@ -86,12 +88,13 @@ type Config struct {
 	sync.RWMutex
 	Version     string       `yaml:"Version"`
 	Tenant      TenantConfig `yaml:"Tenant"`
-	LogFilePath string       `yaml:"LogFilePath"`
-	LogSettings LogSettings  `yaml:"LogSettings"`
-	Interval    int          `yaml:"Interval"`
-	Kafka       KafkaConfig  `yaml:"Kafka"`
-	HTTP        HTTPConfig   `yaml:"HTTP"`
-	StorageDir  string       `yaml:"StorageDir"` // Maintaining backward compatibility
+	keyManager  *apikey.Manager
+	LogFilePath string      `yaml:"LogFilePath"`
+	LogSettings LogSettings `yaml:"LogSettings"`
+	Interval    int         `yaml:"Interval"`
+	Kafka       KafkaConfig `yaml:"Kafka"`
+	HTTP        HTTPConfig  `yaml:"HTTP"`
+	StorageDir  string      `yaml:"StorageDir"` // Maintaining backward compatibility
 	Monitors    struct {
 		CPU     bool `yaml:"CPU"`
 		Memory  bool `yaml:"Memory"`
@@ -206,6 +209,18 @@ func LoadConfig() (*Config, error) {
 		if err := cfg.Validate(); err != nil {
 			return nil, fmt.Errorf("invalid configuration: %w", err)
 		}
+
+		// Initialize API key manager
+		keyManager, err := apikey.NewManager(cfg.Tenant.APIKey, apikey.Config{
+			ValidationEndpoint: cfg.Tenant.Endpoints.KeyValidation,
+			ValidationInterval: 5 * time.Minute,
+			MaxKeyAge:          24 * time.Hour,
+			EncryptKeys:        true,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize API key manager: %w", err)
+		}
+		cfg.keyManager = keyManager
 	}
 
 	return &cfg, nil
@@ -245,7 +260,20 @@ func (cfg *Config) ReloadConfig() error {
 	}
 
 	// Update configuration
+	oldKeyManager := cfg.keyManager
 	*cfg = *newCfg
+
+	// Preserve key manager if new config doesn't initialize one
+	if cfg.keyManager == nil && oldKeyManager != nil {
+		cfg.keyManager = oldKeyManager
+	}
+
+	// Update key if it changed
+	if oldKeyManager != nil && cfg.Tenant.APIKey != oldKeyManager.GetKey() {
+		if err := cfg.keyManager.UpdateKey(cfg.Tenant.APIKey); err != nil {
+			return fmt.Errorf("failed to update API key: %w", err)
+		}
+	}
 
 	return nil
 }
@@ -255,4 +283,35 @@ func (cfg *Config) GetConfigVersion() string {
 	cfg.RLock()
 	defer cfg.RUnlock()
 	return cfg.Version
+}
+
+// GetAPIKey returns the current API key
+func (cfg *Config) GetAPIKey() string {
+	cfg.RLock()
+	defer cfg.RUnlock()
+	if cfg.keyManager != nil {
+		return cfg.keyManager.GetKey()
+	}
+	return cfg.Tenant.APIKey
+}
+
+// GetAPIKeyStatus returns the current API key status
+func (cfg *Config) GetAPIKeyStatus() *apikey.KeyStatus {
+	cfg.RLock()
+	defer cfg.RUnlock()
+	if cfg.keyManager != nil {
+		status := cfg.keyManager.GetStatus()
+		return &status
+	}
+	return nil
+}
+
+// ValidateAPIKey checks if the current API key is valid
+func (cfg *Config) ValidateAPIKey() error {
+	cfg.RLock()
+	defer cfg.RUnlock()
+	if cfg.keyManager != nil {
+		return cfg.keyManager.ValidateKey()
+	}
+	return apikey.ErrKeyInvalid
 }

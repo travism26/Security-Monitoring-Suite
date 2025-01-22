@@ -7,6 +7,7 @@ All notable changes to the System Monitoring Agent will be documented in this fi
 ### Added
 
 - Multi-Tenancy Support:
+
   - Added tenant configuration with organization/tenant ID and API key
   - Added tenant-specific endpoint configurations
   - Implemented tenant-specific logging settings
@@ -14,6 +15,15 @@ All notable changes to the System Monitoring Agent will be documented in this fi
   - Added tenant-specific storage settings
   - Added tenant validation and API key handling
   - Added configuration version tracking (1.0.0)
+
+- API Key Management:
+  - Implemented secure API key storage with encryption
+  - Added API key validation and expiration handling
+  - Added automatic key rotation support
+  - Added periodic key health checks
+  - Added key status monitoring and reporting
+  - Added key validation endpoint integration
+  - Added secure key backup for rotation fallback
 
 ### Changed
 
@@ -30,6 +40,15 @@ All notable changes to the System Monitoring Agent will be documented in this fi
 
 ### Technical Details
 
+- API Key Management:
+
+  - AES-GCM encryption for stored keys
+  - Configurable validation intervals
+  - Configurable key expiration periods
+  - Thread-safe key operations
+  - Graceful key rotation handling
+  - Key status tracking and metrics
+
 - Configuration Changes:
   - Added tenant ID format validation (alphanumeric with hyphens, 4-32 chars)
   - Added API key validation (minimum 32 chars)
@@ -42,6 +61,9 @@ All notable changes to the System Monitoring Agent will be documented in this fi
 ### Testing
 
 - Added comprehensive test cases for configuration loading
+- Added API key management test suite
+- Added key rotation and validation tests
+- Added encryption/decryption tests
 - Added validation tests for tenant configuration
 - Added test coverage for configuration reloading
 - Updated test fixtures with multi-tenant support
