@@ -1,11 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { NotAuthorizedError } from "../errors/not-authorized-error";
 
-// Interface for API key validation response
-interface ApiKeyValidation {
-  valid: boolean;
-  tenantId?: string;
-}
+import { ApiKeyService } from "../services/api-key.service";
 
 // Augment the Express Request type to include tenant information
 declare global {
@@ -15,31 +11,6 @@ declare global {
     }
   }
 }
-
-// This would typically interact with a database or external service
-// For now, we'll use a simple in-memory store for demonstration
-const validateApiKeyWithStore = async (
-  apiKey: string
-): Promise<ApiKeyValidation> => {
-  // TODO: Implement actual API key validation against a database
-  // This is a placeholder implementation
-  if (!apiKey) {
-    return { valid: false };
-  }
-
-  // In a real implementation, we would:
-  // 1. Query the database for the API key
-  // 2. Verify the key hasn't expired
-  // 3. Check if the key is active
-  // 4. Return the associated tenant information
-
-  // Placeholder validation (replace with actual database lookup)
-  const isValid = apiKey.startsWith("sms_") && apiKey.length >= 32;
-  return {
-    valid: isValid,
-    tenantId: isValid ? "demo-tenant-id" : undefined,
-  };
-};
 
 export const validateApiKey = async (
   req: Request,
@@ -52,14 +23,20 @@ export const validateApiKey = async (
     throw new NotAuthorizedError();
   }
 
-  const validation = await validateApiKeyWithStore(apiKey);
+  const validatedKey = await ApiKeyService.validateApiKey(apiKey);
 
-  if (!validation.valid || !validation.tenantId) {
+  if (!validatedKey) {
     throw new NotAuthorizedError();
   }
 
   // Add tenant information to the request
-  req.tenantId = validation.tenantId;
+  req.tenantId = validatedKey.tenantId;
+
+  // Add API key metadata to response headers
+  res.setHeader("X-API-Key-Created", validatedKey.createdAt.toISOString());
+  if (validatedKey.expiresAt) {
+    res.setHeader("X-API-Key-Expires", validatedKey.expiresAt.toISOString());
+  }
 
   next();
 };
