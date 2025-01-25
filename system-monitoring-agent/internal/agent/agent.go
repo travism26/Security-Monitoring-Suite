@@ -2,6 +2,7 @@
 package agent
 
 import (
+	"fmt"
 	"log"
 	"time"
 
@@ -18,15 +19,38 @@ type Agent struct {
 }
 
 func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exporter.MetricsExporter) *Agent {
+	// Use tenant-specific sample rate if configured, otherwise use global interval
+	interval := cfg.Interval
+	if cfg.Tenant.CollectionRules.SampleRate > 0 {
+		interval = cfg.Tenant.CollectionRules.SampleRate
+	}
+
 	return &Agent{
 		config:    cfg,
 		metrics:   mc,
 		exporters: exporters,
-		interval:  time.Duration(cfg.Interval) * time.Second,
+		interval:  time.Duration(interval) * time.Second,
 	}
 }
 
+// validateTenantContext checks if the tenant context is valid
+func (a *Agent) validateTenantContext() error {
+	if a.config.Tenant.ID == "" {
+		return fmt.Errorf("tenant ID is required")
+	}
+	if a.config.Tenant.APIKey == "" {
+		return fmt.Errorf("tenant API key is required")
+	}
+	return nil
+}
+
 func (a *Agent) Start(done chan struct{}) {
+	// Validate tenant context before starting
+	if err := a.validateTenantContext(); err != nil {
+		log.Printf("Error validating tenant context: %v", err)
+		return
+	}
+
 	ticker := time.NewTicker(a.interval)
 	defer ticker.Stop()
 
@@ -36,9 +60,23 @@ func (a *Agent) Start(done chan struct{}) {
 			return
 		case <-ticker.C:
 			data := a.metrics.Collect()
+
+			// Export metrics with retry logic
 			for _, exp := range a.exporters {
-				if err := exp.Export(data); err != nil {
-					log.Printf("Error exporting metrics: %v", err)
+				retries := 0
+				maxRetries := a.config.HTTP.RetryAttempts
+
+				for retries < maxRetries {
+					if err := exp.Export(data); err != nil {
+						if retries == maxRetries-1 {
+							log.Printf("Error exporting metrics after %d retries: %v", maxRetries, err)
+							break
+						}
+						retries++
+						time.Sleep(time.Duration(a.config.HTTP.RetryDelay) * time.Second)
+						continue
+					}
+					break
 				}
 			}
 		}

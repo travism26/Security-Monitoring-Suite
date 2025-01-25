@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/travism26/shared-monitoring-libs/types"
+	"github.com/travism26/system-monitoring-agent/internal/config"
 )
 
 type HTTPExporter struct {
@@ -17,6 +18,8 @@ type HTTPExporter struct {
 	enabled     bool
 	retryQueue  chan MetricBatch
 	storage     MetricStorage
+	config      *config.Config
+	headers     map[string]string
 }
 
 type MetricBatch struct {
@@ -25,19 +28,30 @@ type MetricBatch struct {
 	Attempts  int
 }
 
-func NewHTTPExporter(endpoint string, storage MetricStorage) (*HTTPExporter, error) {
-	enabled := endpoint != ""
+func NewHTTPExporter(cfg *config.Config, storage MetricStorage) (*HTTPExporter, error) {
+	enabled := cfg.Tenant.Endpoints.Metrics != ""
 	if !enabled {
 		log.Println("HTTP exporter disabled: no endpoint configured")
 	}
 
+	// Initialize headers with tenant context
+	headers := map[string]string{
+		cfg.HTTP.Headers.TenantID: cfg.Tenant.ID,
+		cfg.HTTP.Headers.APIKey:   cfg.Tenant.APIKey,
+		"Content-Type":            "application/json",
+		"X-Tenant-Environment":    cfg.Tenant.Environment,
+		"X-Tenant-Type":           cfg.Tenant.Type,
+	}
+
 	exporter := &HTTPExporter{
-		apiEndpoint: endpoint,
+		apiEndpoint: cfg.Tenant.Endpoints.Metrics,
 		enabled:     enabled,
 		retryQueue:  make(chan MetricBatch, 1000),
 		storage:     storage,
+		config:      cfg,
+		headers:     headers,
 		client: &http.Client{
-			Timeout: time.Second * 10,
+			Timeout: time.Duration(cfg.HTTP.Timeout) * time.Second,
 			Transport: &http.Transport{
 				MaxIdleConns:       100,
 				IdleConnTimeout:    90 * time.Second,
@@ -87,7 +101,18 @@ func (h *HTTPExporter) sendBatch(batch MetricBatch) error {
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
-	resp, err := h.client.Post(h.apiEndpoint, "application/json", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", h.apiEndpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Add headers
+	for key, value := range h.headers {
+		req.Header.Set(key, value)
+	}
+
+	// Do sends an HTTP request and returns an HTTP response
+	resp, err := h.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send metrics: %w", err)
 	}

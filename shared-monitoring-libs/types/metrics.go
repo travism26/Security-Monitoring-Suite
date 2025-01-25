@@ -5,9 +5,16 @@ import (
 )
 
 // MetricPayload represents the common structure for system metrics
+// TenantContext holds tenant-specific information
+type TenantContext struct {
+	ID       string            `json:"id"`
+	Metadata map[string]string `json:"metadata,omitempty"`
+}
+
 type MetricPayload struct {
-	Timestamp string     `json:"timestamp"`
-	Data      MetricData `json:"data"`
+	Timestamp string        `json:"timestamp"`
+	Tenant    TenantContext `json:"tenant"`
+	Data      MetricData    `json:"data"`
 }
 
 type MetricData struct {
@@ -54,9 +61,10 @@ type CPUUsage struct {
 }
 
 type MetadataInfo struct {
-	CollectionDuration string   `json:"collection_duration"`
-	CollectorCount     int      `json:"collector_count"`
-	Errors             []string `json:"errors,omitempty"`
+	CollectionDuration string            `json:"collection_duration"`
+	CollectorCount     int               `json:"collector_count"`
+	Errors             []string          `json:"errors,omitempty"`
+	TenantMetadata     map[string]string `json:"tenant_metadata,omitempty"`
 }
 
 type ThreatIndicator struct {

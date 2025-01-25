@@ -43,13 +43,12 @@ func main() {
 		exporter.NewFileExporter(cfg.LogFilePath),
 	}
 
-	if cfg.HTTP.Endpoint != "" {
-		exporter, err := exporter.NewHTTPExporter(cfg.HTTP.Endpoint, storage)
-		if err != nil {
-			log.Fatalf("Error creating HTTP exporter: %v", err)
-		}
-		exporters = append(exporters, exporter)
+	// Initialize HTTP exporter with tenant context
+	httpExporter, err := exporter.NewHTTPExporter(cfg, storage)
+	if err != nil {
+		log.Fatalf("Error creating HTTP exporter: %v", err)
 	}
+	exporters = append(exporters, httpExporter)
 
 	// Initialize agent
 	ag := agent.NewAgent(cfg, mc, exporters...)

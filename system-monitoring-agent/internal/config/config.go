@@ -26,13 +26,21 @@ var (
 
 // TenantConfig holds tenant-specific configuration
 type TenantConfig struct {
-	ID        string `yaml:"ID"`
-	APIKey    string `yaml:"APIKey"`
-	Endpoints struct {
+	ID          string `yaml:"ID"`
+	APIKey      string `yaml:"APIKey"`
+	Environment string `yaml:"Environment"` // e.g., production, staging, development
+	Name        string `yaml:"Name"`        // Tenant organization name
+	Type        string `yaml:"Type"`        // e.g., enterprise, standard, basic
+	Endpoints   struct {
 		Metrics       string `yaml:"Metrics"`
 		HealthCheck   string `yaml:"HealthCheck"`
 		KeyValidation string `yaml:"KeyValidation"`
 	} `yaml:"Endpoints"`
+	CollectionRules struct {
+		EnabledMetrics []string `yaml:"EnabledMetrics"` // List of enabled metric types
+		SampleRate     int      `yaml:"SampleRate"`     // Collection frequency override
+		RetentionDays  int      `yaml:"RetentionDays"`  // Data retention period
+	} `yaml:"CollectionRules"`
 }
 
 // LogSettings holds logging configuration
@@ -228,6 +236,13 @@ func LoadConfig() (*Config, error) {
 
 // setDefaultConfig sets default values for configuration
 func setDefaultConfig() {
+	// Tenant defaults
+	viper.SetDefault("Tenant.Environment", "development")
+	viper.SetDefault("Tenant.Type", "standard")
+	viper.SetDefault("Tenant.CollectionRules.EnabledMetrics", []string{"cpu", "memory", "disk", "network"})
+	viper.SetDefault("Tenant.CollectionRules.SampleRate", 60)
+	viper.SetDefault("Tenant.CollectionRules.RetentionDays", 7)
+
 	viper.SetDefault("LogFilePath", "./agent.log")
 	viper.SetDefault("LogSettings.Level", "info")
 	viper.SetDefault("LogSettings.Format", "json")

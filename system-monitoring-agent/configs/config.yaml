@@ -3,11 +3,30 @@ Tenant:
   ID: ""
   # API key for authentication
   APIKey: ""
+  # Tenant organization name
+  Name: ""
+  # Environment (e.g., production, staging, development)
+  Environment: "development"
+  # Tenant type (e.g., enterprise, standard, basic)
+  Type: "standard"
   # Tenant-specific endpoint overrides (optional)
   Endpoints:
     Metrics: "http://localhost:30001/api/v1/system-metrics/ingest"
     HealthCheck: "http://localhost:30001/api/v1/health"
     KeyValidation: "http://localhost:30001/api/v1/validate-key"
+  # Tenant-specific collection rules
+  CollectionRules:
+    # List of enabled metric types
+    EnabledMetrics:
+      - "cpu"
+      - "memory"
+      - "disk"
+      - "network"
+      - "processes"
+    # Collection frequency override (in seconds)
+    SampleRate: 60
+    # Data retention period (in days)
+    RetentionDays: 7
 
 # General logging configuration
 LogFilePath: "./agent.log"
