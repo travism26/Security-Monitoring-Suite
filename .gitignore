@@ -29,3 +29,4 @@ agent.log
 
 # Cursor files
 .file-cursors.md
+.aider*
