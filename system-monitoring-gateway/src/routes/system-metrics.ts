@@ -15,8 +15,9 @@ const validateMetrics = [
   body("timestamp").isISO8601().withMessage("Invalid timestamp format"),
 ];
 
+// "/api/v1/system",
 router.post(
-  "/metrics/ingest",
+  "/api/v1/system/metrics/ingest",
   validateMetrics,
   validateRequest,
   async (req: Request<{}, {}, SystemMetrics>, res: Response) => {

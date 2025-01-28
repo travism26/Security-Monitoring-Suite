@@ -24,8 +24,8 @@ app.get("/health", (req, res) => {
   res.status(200).send({ status: "healthy" });
 });
 
-// API key management routes (JWT protected)
-app.use("/api/v1/keys", validateJWT, validateTenant, apiKeysRouter);
+// API key management routes
+app.use(apiKeysRouter);
 
 // Routes that require API key authentication
 app.use(validateApiKey);
@@ -35,7 +35,7 @@ app.use(validateTenant);
 if (process.env.NODE_ENV !== "test") {
   app.use("/api/v1/metrics", metricsRouter);
 }
-app.use("/api/v1/system", systemMetricsRouter);
+app.use(systemMetricsRouter);
 app.all("*", async (req, res) => {
   throw new NotFoundError();
 });
