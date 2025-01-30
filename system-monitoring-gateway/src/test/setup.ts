@@ -5,12 +5,13 @@ import { app } from "../app";
 import jwt from "jsonwebtoken";
 
 jest.mock("../kafka/kafka-wrapper");
+jest.mock("../services/mongodb.service");
 jest.mock("../services/api-key.service", () => ({
   ApiKeyService: {
     validateApiKey: jest.fn().mockImplementation((apiKey: string) => ({
-      tenantId: apiKey === 'invalid-key' ? 'wrong-tenant' : 'test-tenant',
+      tenantId: apiKey === "invalid-key" ? "wrong-tenant" : "test-tenant",
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 86400000)
+      expiresAt: new Date(Date.now() + 86400000),
     })),
   },
 }));

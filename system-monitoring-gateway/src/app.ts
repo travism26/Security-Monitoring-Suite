@@ -11,8 +11,17 @@ import { apiKeysRouter } from "./routes/api-keys";
 import { validateApiKey } from "./middlewares/validate-api-key";
 import { validateTenantConsistency } from "./middlewares/validate-tenant";
 import { validateJWT } from "./middlewares/require-auth";
+import { mongoDBService } from "./services/mongodb.service";
 
 const app = express();
+
+// Initialize MongoDB connection
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/monitoring";
+mongoDBService.connect(MONGODB_URI).catch((err) => {
+  console.error("Failed to connect to MongoDB:", err);
+  process.exit(1);
+});
 app.set("trust proxy", true);
 app.use(json());
 app.use(
@@ -20,8 +29,15 @@ app.use(
 );
 
 // Health check endpoint - no auth required
-app.get("/health", (req, res) => {
-  res.status(200).send({ status: "healthy" });
+app.get("/health", async (req, res) => {
+  const mongoHealth = await mongoDBService.healthCheck();
+  const status = mongoHealth ? "healthy" : "degraded";
+  res.status(mongoHealth ? 200 : 503).send({
+    status,
+    services: {
+      mongodb: mongoHealth ? "connected" : "disconnected",
+    },
+  });
 });
 
 // API key management routes
