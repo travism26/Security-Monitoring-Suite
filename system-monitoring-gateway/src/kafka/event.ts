@@ -1,6 +1,6 @@
-import { Topics } from './topics';
+import { Topics } from "./topics";
 
-export interface Event {
+export interface Event<T = any> {
   topic: Topics;
-  data: any;
+  data: T;
 }

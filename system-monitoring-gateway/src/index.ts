@@ -7,12 +7,20 @@ const start = async () => {
   console.log('Starting server...');
   let systemMetricsPublisher: SystemMetricsPublisher;
   if (process.env.KAFKA_BROKER) {
-    // Initialize Kafka and add the system metrics producer
     const clientId = process.env.KAFKA_CLIENT_ID || 'system-monitoring-gateway';
     await kafkaWrapper.initialize([process.env.KAFKA_BROKER], clientId);
     await kafkaWrapper.addProducer(
       Topics.SystemMetrics,
       new SystemMetricsPublisher(kafkaWrapper.getClient())
+    );
+    // Add error and DLQ producers
+    await kafkaWrapper.addProducer(
+      Topics.SystemMetricsErrors,
+      new SystemMetricsErrorProducer(kafkaWrapper.getClient())
+    );
+    await kafkaWrapper.addProducer(
+      Topics.SystemMetricsDLQ,
+      new SystemMetricsDLQProducer(kafkaWrapper.getClient())
     );
   }
   try {

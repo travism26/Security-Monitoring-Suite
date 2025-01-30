@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { CustomError } from "../errors/custom-error";
+import { Topics } from "../kafka/topics";
+import { kafkaWrapper } from "../kafka/kafka-wrapper";
 
 interface ErrorResponse {
   errors: { message: string; field?: string }[];
@@ -8,12 +10,21 @@ interface ErrorResponse {
   requestId: string;
 }
 
-export const errorHandler = (
+export const errorHandler = async (
   err: Error,
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
+  const publishError = async (topic: Topics, errorData: any): Promise<void> => {
+    try {
+      const producer = kafkaWrapper.getProducer(topic);
+      await producer.publish(errorData);
+    } catch (kafkaError) {
+      console.error("Failed to publish error to Kafka:", kafkaError);
+    }
+  };
+
   // Generate unique request ID for tracking
   const requestId = Math.random().toString(36).substring(2, 15);
 
@@ -21,6 +32,20 @@ export const errorHandler = (
   const tenantId = req.tenantId || req.currentUser?.tenantId;
 
   if (err instanceof CustomError) {
+    const errorData = {
+      error: err.message,
+      original_payload: req.body,
+      tenant_id: tenantId || "unknown",
+      timestamp: new Date().toISOString(),
+      status_code: err.statusCode,
+    };
+
+    if (err.statusCode >= 400 && err.statusCode < 500) {
+      await publishError(Topics.SystemMetricsErrors, errorData);
+    } else if (err.statusCode >= 500) {
+      await publishError(Topics.SystemMetricsDLQ, errorData);
+    }
+
     const response: ErrorResponse = {
       errors: err.serializeErrors(),
       timestamp: new Date().toISOString(),

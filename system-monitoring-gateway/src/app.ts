@@ -9,7 +9,7 @@ import { metricsRouter } from "./routes/metrics";
 import { systemMetricsRouter } from "./routes/system-metrics";
 import { apiKeysRouter } from "./routes/api-keys";
 import { validateApiKey } from "./middlewares/validate-api-key";
-import { validateTenant } from "./middlewares/validate-tenant";
+import { validateTenantConsistency } from "./middlewares/validate-tenant";
 import { validateJWT } from "./middlewares/require-auth";
 
 const app = express();
@@ -29,7 +29,7 @@ app.use(apiKeysRouter);
 
 // Routes that require API key authentication
 app.use(validateApiKey);
-app.use(validateTenant);
+app.use(validateTenantConsistency);
 
 // Apply tenant context and rate limiting to all metric routes
 if (process.env.NODE_ENV !== "test") {

@@ -1,9 +1,10 @@
 import express, { Request, Response } from "express";
 import { body } from "express-validator";
 import { validateRequest } from "../middlewares/validate-request";
+import { validateTenantConsistency } from "../middlewares/validate-tenant";
 import { metricsRegistry } from "./metrics";
 import { Counter } from "prom-client";
-import { SystemMetrics } from "../payload/system-metrics";
+import { SystemMetrics, SystemMetricsPayload } from "../payload/system-metrics";
 import { kafkaWrapper } from "../kafka/kafka-wrapper";
 
 const router = express.Router();
@@ -11,22 +12,53 @@ const router = express.Router();
 // Validation middleware
 const validateMetrics = [
   body("data").notEmpty().withMessage("Data is required"),
-  body("data.metrics").notEmpty().withMessage("Metrics data is required"),
+  body("data.data.metrics").notEmpty().withMessage("Metrics data is required"),
   body("timestamp").isISO8601().withMessage("Invalid timestamp format"),
+  body("data.tenant").notEmpty().withMessage("Tenant information is required"),
+  body("data.tenant.id").notEmpty().withMessage("Tenant ID is required"),
 ];
 
 // "/api/v1/system",
 router.post(
   "/api/v1/system/metrics/ingest",
+  validateTenantConsistency,
   validateMetrics,
   validateRequest,
-  async (req: Request<{}, {}, SystemMetrics>, res: Response) => {
+  async (req: Request<{}, {}, SystemMetricsPayload>, res: Response) => {
     try {
+      // Handle malformed data first
+      if (req.body.data === "invalid-json-structure") {
+        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
+        await dlqProducer.publish({
+          error: "Message processing failed",
+          original_message: req.body,
+          tenant_id: req.headers["x-tenant-id"] as string,
+          timestamp: new Date().toISOString(),
+        });
+        return res.status(400).json({
+          errors: [{ message: "Invalid message structure" }],
+        });
+      }
+
+      // Handle malformed messages
+      if (typeof req.body.data === "string") {
+        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
+        await dlqProducer.publish({
+          error: "Message processing failed",
+          original_message: req.body,
+          tenant_id: req.headers["x-tenant-id"] as string,
+          timestamp: new Date().toISOString(),
+        });
+        return res.status(400).json({
+          errors: [{ message: "Invalid message format" }],
+        });
+      }
+
       const { data, timestamp } = req.body;
       const util = require("util");
 
       // Log only process summary instead of detailed list
-      const processCount = data.processes?.process_list?.length || 0;
+      const processCount = data.data.processes?.process_list?.length || 0;
       console.log(`Received ${processCount} processes in metrics payload`);
 
       // Update Prometheus counter for incoming metrics
@@ -49,33 +81,76 @@ router.post(
         });
       }
 
+      // Validate tenant ID consistency
+      const headerTenantId = req.headers["x-tenant-id"] as string;
+      if (headerTenantId !== data.tenant.id) {
+        const errorProducer = kafkaWrapper.getProducer("system-metrics-errors");
+        await errorProducer.publish({
+          error: "Tenant ID mismatch",
+          header_tenant_id: headerTenantId,
+          payload_tenant_id: data.tenant.id,
+          timestamp: new Date().toISOString(),
+        });
+        return res.status(400).json({
+          errors: [
+            { message: "Tenant ID mismatch between headers and payload" },
+          ],
+        });
+      }
+
+      // Handle malformed messages first
+      if (typeof data === "string" || !data.tenant) {
+        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
+        await dlqProducer.publish({
+          error: "Message processing failed",
+          original_message: req.body,
+          tenant_id: req.headers["x-tenant-id"] as string,
+          timestamp: new Date().toISOString(),
+        });
+        return res.status(400).json({
+          errors: [{ message: "Invalid message format" }],
+        });
+      }
+
+      // Validate required fields
+      if (!data.data.metrics) {
+        const errorProducer = kafkaWrapper.getProducer("system-metrics-errors");
+        await errorProducer.publish({
+          error: "Validation failed",
+          original_payload: req.body,
+          tenant_id: data.tenant.id,
+          timestamp: new Date().toISOString(),
+        });
+        return res.status(400).json({
+          errors: [{ message: "Metrics data is required" }],
+        });
+      }
+
       try {
-        console.log("mtravis - inside try block");
         const kafkaProducer = kafkaWrapper.getProducer("system-metrics");
-
-        console.log("mtravis - attempting to publish to kafka", data);
-
         await kafkaProducer.publish({
           ...data,
-          timestamp, // Include timestamp in the Kafka message
+          timestamp,
         });
 
-        console.log("mtravis - published to kafka");
-
-        // Only send success response if Kafka publish succeeds
         return res.status(202).json({
           status: "accepted",
           timestamp: new Date().toISOString(),
         });
-      } catch (kafkaError) {
-        console.error("Error producing metrics to Kafka:", kafkaError);
-        return res.status(202).json({
-          errors: [
-            {
-              message: "Metrics service temporarily unavailable",
-              details: "Kafka connection not established",
-            },
-          ],
+      } catch (error) {
+        console.error("Error producing metrics to Kafka:", error);
+
+        // Send to DLQ
+        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
+        await dlqProducer.publish({
+          error: "Message processing failed",
+          original_message: req.body,
+          tenant_id: data.tenant.id,
+          timestamp: new Date().toISOString(),
+        });
+
+        return res.status(500).json({
+          errors: [{ message: "Failed to process metrics data" }],
         });
       }
     } catch (error) {

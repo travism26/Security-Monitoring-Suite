@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { validateJWT, requireAuth } from "../middlewares/require-auth";
-import { validateTenant } from "../middlewares/validate-tenant";
+import { validateTenantConsistency } from "../middlewares/validate-tenant";
 import { ApiKeyService } from "../services/api-key.service";
 
 const router = express.Router();
@@ -8,7 +8,7 @@ const router = express.Router();
 // All routes require JWT authentication
 router.use(validateJWT);
 router.use(requireAuth);
-router.use(validateTenant);
+router.use(validateTenantConsistency);
 
 // Mount all routes under /api/v1/keys
 const apiKeysRouter = express.Router();

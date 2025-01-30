@@ -7,11 +7,11 @@ import jwt from "jsonwebtoken";
 jest.mock("../kafka/kafka-wrapper");
 jest.mock("../services/api-key.service", () => ({
   ApiKeyService: {
-    validateApiKey: jest.fn().mockResolvedValue({
-      tenantId: "test-tenant",
+    validateApiKey: jest.fn().mockImplementation((apiKey: string) => ({
+      tenantId: apiKey === 'invalid-key' ? 'wrong-tenant' : 'test-tenant',
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 86400000), // 24 hours from now
-    }),
+      expiresAt: new Date(Date.now() + 86400000)
+    })),
   },
 }));
 
