@@ -30,3 +30,25 @@ export class SystemMetricsErrorProducer extends Publisher<SystemMetricsErrors> {
     super(client);
   }
 }
+
+interface SystemMetricsDLQ extends Event {
+  topic: Topics.SystemMetricsDLQ;
+  data: {
+    error: string;
+    original_message: any;
+    tenant_id: string;
+    timestamp: string;
+  };
+}
+
+/**
+ * Publisher for handling unprocessable system metric messages
+ * Publishes failed messages to a Dead Letter Queue for later analysis
+ */
+export class SystemMetricsDLQProducer extends Publisher<SystemMetricsDLQ> {
+  readonly topic = Topics.SystemMetricsDLQ;
+
+  constructor(client: Kafka) {
+    super(client);
+  }
+}

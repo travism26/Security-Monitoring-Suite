@@ -1,13 +1,16 @@
-import { app } from './app';
-import { kafkaWrapper } from './kafka/kafka-wrapper';
-import { SystemMetricsPublisher } from './events/system-metrics-publisher';
-import { Topics } from './kafka/topics';
+import { app } from "./app";
+import { kafkaWrapper } from "./kafka/kafka-wrapper";
+import {
+  SystemMetricsPublisher,
+  SystemMetricsErrorProducer,
+  SystemMetricsDLQProducer,
+} from "./events/system-metrics-publisher";
+import { Topics } from "./kafka/topics";
 
 const start = async () => {
-  console.log('Starting server...');
-  let systemMetricsPublisher: SystemMetricsPublisher;
+  console.log("Starting server...");
   if (process.env.KAFKA_BROKER) {
-    const clientId = process.env.KAFKA_CLIENT_ID || 'system-monitoring-gateway';
+    const clientId = process.env.KAFKA_CLIENT_ID || "system-monitoring-gateway";
     await kafkaWrapper.initialize([process.env.KAFKA_BROKER], clientId);
     await kafkaWrapper.addProducer(
       Topics.SystemMetrics,
@@ -28,11 +31,11 @@ const start = async () => {
       process.exit(0);
     };
 
-    process.on('SIGTERM', shutdown);
-    process.on('SIGINT', shutdown);
+    process.on("SIGTERM", shutdown);
+    process.on("SIGINT", shutdown);
 
     app.listen(3000, () => {
-      console.log('Listening on port 3000');
+      console.log("Listening on port 3000");
     });
   } catch (err) {
     console.error(err);
