@@ -61,6 +61,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
+            - name: MONGODB_URI
+              value: "mongodb://system-monitoring-mongodb:27017/monitoring"
           resources:
             requests:
               cpu: "100m"
