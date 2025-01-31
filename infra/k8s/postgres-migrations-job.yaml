@@ -8,10 +8,20 @@ spec:
       containers:
         - name: migrations
           image: postgres:14
-          command: ['/bin/sh', '-c']
+          command: ["/bin/sh", "-c"]
           args:
             - |
-              psql "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres-srv:5432/$POSTGRES_DB" -f /migrations/001_initial_schema.sql
+              # Wait for PostgreSQL to be ready
+              until pg_isready -h postgres-srv -p 5432; do
+                echo "Waiting for PostgreSQL to be ready..."
+                sleep 2
+              done
+
+              # Apply schemas in order
+              PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/logs.sql
+              PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/alerts.sql
+
+              echo "Database schemas applied successfully"
           env:
             - name: POSTGRES_DB
               value: logdb
@@ -25,8 +35,13 @@ spec:
           volumeMounts:
             - name: migrations
               mountPath: /migrations
+            - name: schemas
+              mountPath: /schemas
       volumes:
         - name: migrations
           configMap:
             name: postgres-migrations
+        - name: schemas
+          configMap:
+            name: postgres-schemas
       restartPolicy: OnFailure

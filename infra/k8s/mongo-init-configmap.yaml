@@ -1,0 +1,73 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init-scripts
+data:
+  init.js: |
+    // Initialize MongoDB with schema validation
+    db = db.getSiblingDB('monitoring');
+
+    // Create collections with schema validation
+    db.createCollection('tenants', {
+      validator: {
+        $jsonSchema: {
+          bsonType: 'object',
+          required: ['organizationName', 'contactEmail'],
+          properties: {
+            organizationName: {
+              bsonType: 'string',
+              description: 'Organization name - required'
+            },
+            contactEmail: {
+              bsonType: 'string',
+              description: 'Contact email - required and unique'
+            },
+            status: {
+              bsonType: 'string',
+              enum: ['active', 'inactive'],
+              description: 'Status - must be either active or inactive'
+            }
+          }
+        }
+      }
+    });
+
+    db.createCollection('apikeys', {
+      validator: {
+        $jsonSchema: {
+          bsonType: 'object',
+          required: ['key', 'tenantId', 'expiresAt'],
+          properties: {
+            key: {
+              bsonType: 'string',
+              description: 'API key - required and unique'
+            },
+            tenantId: {
+              bsonType: 'objectId',
+              description: 'Reference to tenant - required'
+            },
+            permissions: {
+              bsonType: 'array',
+              items: {
+                enum: ['read', 'write', 'admin']
+              },
+              description: 'Array of permissions'
+            },
+            expiresAt: {
+              bsonType: 'date',
+              description: 'Expiration date - required'
+            },
+            isActive: {
+              bsonType: 'bool',
+              description: 'Whether the key is active'
+            }
+          }
+        }
+      }
+    });
+
+    // Create indexes
+    db.tenants.createIndex({ 'contactEmail': 1 }, { unique: true });
+    db.apikeys.createIndex({ 'key': 1 }, { unique: true });
+    db.apikeys.createIndex({ 'tenantId': 1 });
+    db.apikeys.createIndex({ 'expiresAt': 1 });

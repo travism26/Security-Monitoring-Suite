@@ -31,14 +31,36 @@ spec:
       labels:
         app: system-monitoring-mongodb
     spec:
+      initContainers:
+        - name: init-mongodb
+          image: mongo:5.0
+          command: ["mongosh"]
+          args:
+            - --host
+            - localhost
+            - --eval
+            - |
+              while (!db.adminCommand('ping').ok) {
+                print('Waiting for MongoDB to be ready...');
+                sleep(1000);
+              }
+              load('/docker-entrypoint-initdb.d/init.js');
+          volumeMounts:
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
       containers:
         - name: mongodb
+          env:
+            - name: MONGO_INITDB_DATABASE
+              value: monitoring
           image: mongo:5.0
           ports:
             - containerPort: 27017
           volumeMounts:
             - name: mongodb-data
               mountPath: /data/db
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d
           resources:
             requests:
               cpu: "200m"
@@ -62,6 +84,10 @@ spec:
                 - "db.adminCommand('ping')"
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: init-scripts
+          configMap:
+            name: mongo-init-scripts
   volumeClaimTemplates:
     - metadata:
         name: mongodb-data
