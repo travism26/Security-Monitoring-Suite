@@ -3,8 +3,6 @@ kind: ConfigMap
 metadata:
   name: postgres-migrations
 data:
-  # Import centralized schemas
-  logs.sql: |
-    \i /schemas/postgresql/log-aggregator/logs.sql
-  alerts.sql: |
-    \i /schemas/postgresql/log-aggregator/alerts.sql
+  # Note: The SQL content will be populated by kubectl create configmap
+  # Use: kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql
+  # This comment serves as a reminder of how to properly create this ConfigMap

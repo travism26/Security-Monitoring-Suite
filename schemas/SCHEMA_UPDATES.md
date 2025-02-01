@@ -44,18 +44,24 @@ ALTER TABLE logs ADD COLUMN severity INTEGER;
 ### 3. Deploy Changes
 
 ```bash
-# 1. Update the schema ConfigMap
-kubectl delete configmap postgres-schemas
-# Create ConfigMap from schema files (using valid key names)
+# 1. Navigate to schema directory
 cd schemas/postgresql/log-aggregator
-kubectl create configmap postgres-schemas \
-  --from-file=logs.sql \
-  --from-file=alerts.sql
 
-# 2. Run a new migration job
+# 2. Update both ConfigMaps with SQL content
+# Delete existing ConfigMaps
+kubectl delete configmap postgres-schemas
+kubectl delete configmap postgres-migrations
+
+# Create new ConfigMaps with direct SQL content
+kubectl create configmap postgres-schemas --from-file=logs.sql --from-file=alerts.sql
+kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql
+
+# 3. Run a new migration job
 kubectl delete job postgres-migrations
-kubectl apply -f infra/k8s/postgres-migrations-job.yaml
+kubectl apply -f ../../../infra/k8s/postgres-migrations-job.yaml
 ```
+
+Important Note: Both ConfigMaps (postgres-schemas and postgres-migrations) need to be created with the actual SQL content directly from the files. Do not use PostgreSQL's \i command to import files, as this will cause the migrations to fail. The migration job expects to find the SQL content directly in the mounted ConfigMap files.
 
 ## MongoDB Schema Updates
 
@@ -189,24 +195,232 @@ kubectl exec -it postgres-pod -- psql -d logdb -f /migrations/rollback_005_add_s
 kubectl rollout undo statefulset system-monitoring-mongodb
 ```
 
-## Common Issues
+## Troubleshooting Guide
 
-1. **Migration Failures**
+### Understanding Common Migration Failures
 
-   - Check database connectivity
-   - Verify SQL syntax
-   - Ensure migrations run in correct order
+The most common migration failure occurs due to misconfigurations in how SQL files are mounted and accessed in the Kubernetes environment. Here's a detailed explanation of a typical failure scenario:
 
-2. **Validation Errors**
+1. **Initial Error Scenario**
 
-   - Verify existing data meets new constraints
-   - Check JSON Schema syntax
-   - Monitor MongoDB logs for validation issues
+   ```
+   error: /schemas/postgresql/log-aggregator/logs.sql: No such file or directory
+   ```
 
-3. **Application Impact**
-   - Update application code for schema changes
-   - Test all affected queries
-   - Monitor application performance
+   This error occurs when the postgres-migrations ConfigMap is configured to use PostgreSQL's \i command to import files:
+
+   ```yaml
+   # Incorrect configuration in postgres-migrations ConfigMap
+   data:
+     logs.sql: |
+       \i /schemas/postgresql/log-aggregator/logs.sql
+   ```
+
+   The problem is two-fold:
+
+   - The \i command looks for files in the filesystem
+   - The path `/schemas/postgresql/log-aggregator/` doesn't exist in the container
+
+2. **Solution Explanation**
+   Instead of using \i commands, we should directly include the SQL content in the ConfigMap. This works because:
+
+   - The SQL files are mounted directly in the /migrations directory
+   - The migration job can execute the SQL directly without needing to import files
+
+   The correct approach is to create the ConfigMap with the actual SQL content:
+
+   ```bash
+   kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql
+   ```
+
+### Common Issues and Solutions
+
+1. **ConfigMap and File Mounting Issues**
+
+   Problem: Files not found in expected locations or incorrect paths
+
+   ```
+   error: /schemas/postgresql/log-aggregator/logs.sql: No such file or directory
+   ```
+
+   Solutions:
+
+   - Verify ConfigMap creation:
+     ```bash
+     # Check ConfigMap contents
+     kubectl get configmap postgres-schemas -o yaml
+     kubectl get configmap postgres-migrations -o yaml
+     ```
+   - Create ConfigMaps with direct file content:
+
+     ```bash
+     # Navigate to schema directory
+     cd schemas/postgresql/log-aggregator
+
+     # Recreate ConfigMaps with proper content
+     kubectl delete configmap postgres-schemas
+     kubectl create configmap postgres-schemas --from-file=logs.sql --from-file=alerts.sql
+
+     kubectl delete configmap postgres-migrations
+     kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql
+     ```
+
+   - Verify volume mounts in migration job:
+     ```bash
+     kubectl describe pod <postgres-migrations-pod-name>
+     ```
+
+2. **Database Connectivity Issues**
+
+   Problem: Migration job can't connect to database
+
+   ```
+   error: connection refused
+   ```
+
+   Solutions:
+
+   - Check if PostgreSQL is running:
+     ```bash
+     kubectl get pods | grep postgres
+     kubectl logs postgres-srv
+     ```
+   - Verify service connectivity:
+     ```bash
+     kubectl describe service postgres-srv
+     ```
+   - Check credentials and environment variables:
+     ```bash
+     kubectl describe configmap postgres-config
+     kubectl get secret postgres-secret -o yaml
+     ```
+
+3. **SQL Syntax and Migration Errors**
+
+   Problem: SQL errors during migration
+
+   ```
+   ERROR: syntax error at or near...
+   ```
+
+   Solutions:
+
+   - Validate SQL syntax locally:
+     ```bash
+     # Test against local PostgreSQL
+     psql -d testdb -f logs.sql
+     ```
+   - Check migration order:
+     ```bash
+     # View migration job logs
+     kubectl logs <postgres-migrations-pod-name>
+     ```
+   - Verify schema versions match:
+     ```bash
+     # Check current database version
+     psql -d logdb -c "SELECT version FROM schema_versions;"
+     ```
+
+4. **Permission Issues**
+
+   Problem: Insufficient privileges
+
+   ```
+   ERROR: permission denied for...
+   ```
+
+   Solutions:
+
+   - Verify database user permissions:
+     ```bash
+     # Check user roles
+     psql -d logdb -c "\du"
+     ```
+   - Grant necessary permissions:
+     ```sql
+     GRANT ALL PRIVILEGES ON DATABASE logdb TO postgres;
+     ```
+   - Check Kubernetes service account permissions:
+     ```bash
+     kubectl describe rolebinding postgres-role-binding
+     ```
+
+### Step-by-Step Migration Verification
+
+1. **Pre-migration Checks**
+
+   ```bash
+   # Verify PostgreSQL is running
+   kubectl get pods | grep postgres
+
+   # Check existing schemas
+   kubectl exec -it postgres-srv -- psql -d logdb -c "\dt"
+   ```
+
+2. **Apply Migrations**
+
+   ```bash
+   # Delete existing resources
+   kubectl delete configmap postgres-schemas
+   kubectl delete configmap postgres-migrations
+   kubectl delete job postgres-migrations
+
+   # Create new ConfigMaps
+   cd schemas/postgresql/log-aggregator
+   kubectl create configmap postgres-schemas --from-file=logs.sql --from-file=alerts.sql
+   kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql
+
+   # Apply migration job
+   kubectl apply -f ../../../infra/k8s/postgres-migrations-job.yaml
+   ```
+
+3. **Verify Migration Success**
+
+   ```bash
+   # Check migration job status
+   kubectl get pods | grep postgres-migrations
+
+   # View migration logs
+   kubectl logs <postgres-migrations-pod-name>
+
+   # Verify tables were created
+   kubectl exec -it postgres-srv -- psql -d logdb -c "\dt"
+   ```
+
+### Best Practices for Troubleshooting
+
+1. **Always Check Logs First**
+
+   - Migration job logs
+   - PostgreSQL server logs
+   - Kubernetes events
+
+2. **Verify Resources in Order**
+
+   - ConfigMaps existence and content
+   - Pod status and health
+   - Volume mounts
+   - Database connectivity
+
+3. **Use Dry Runs When Possible**
+
+   - Test migrations locally
+   - Use kubectl --dry-run
+   - Validate SQL syntax before applying
+
+4. **Document and Version Control**
+   - Keep track of applied migrations
+   - Document troubleshooting steps
+   - Maintain rollback procedures
+
+### Need Help?
+
+If issues persist:
+
+1. Check migration logs: `kubectl logs job/postgres-migrations`
+2. Check PostgreSQL logs: `kubectl logs postgres-srv`
+3. Review schema version history in centralized schema files
+4. Verify all ConfigMaps and secrets are properly configured
 
 ## Need Help?
 
