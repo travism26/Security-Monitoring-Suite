@@ -18,8 +18,15 @@ spec:
               done
 
               # Apply schemas in order
-              PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/logs.sql
-              PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/alerts.sql
+              # Apply schemas in order (logs must be created before alerts due to foreign key constraints)
+              for schema in logs.sql alerts.sql; do
+                echo "Applying schema: $schema"
+                PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/$schema
+                if [ $? -ne 0 ]; then
+                  echo "Failed to apply schema: $schema"
+                  exit 1
+                fi
+              done
 
               echo "Database schemas applied successfully"
           env:

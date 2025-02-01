@@ -4,7 +4,7 @@ metadata:
   name: postgres-schemas
 data:
   # Log Aggregator Schemas
-  "postgresql/log-aggregator/logs.sql": |
+  logs.sql: |
     -- Schema Version: 1.0.0
     -- Created: 2025-01-31
     -- Last Modified: 2025-01-31
@@ -42,7 +42,7 @@ data:
     CREATE INDEX IF NOT EXISTS idx_process_logs_log_id ON process_logs(log_id);
     CREATE INDEX IF NOT EXISTS idx_process_logs_name ON process_logs(name);
 
-  "postgresql/log-aggregator/alerts.sql": |
+  alerts.sql: |
     -- Schema Version: 1.0.0
     -- Created: 2025-01-31
     -- Last Modified: 2025-01-31

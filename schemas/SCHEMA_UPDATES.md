@@ -46,7 +46,11 @@ ALTER TABLE logs ADD COLUMN severity INTEGER;
 ```bash
 # 1. Update the schema ConfigMap
 kubectl delete configmap postgres-schemas
-kubectl create configmap postgres-schemas --from-file=schemas/postgresql/
+# Create ConfigMap from schema files (using valid key names)
+cd schemas/postgresql/log-aggregator
+kubectl create configmap postgres-schemas \
+  --from-file=logs.sql \
+  --from-file=alerts.sql
 
 # 2. Run a new migration job
 kubectl delete job postgres-migrations

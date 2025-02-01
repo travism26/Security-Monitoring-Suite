@@ -31,23 +31,6 @@ spec:
       labels:
         app: system-monitoring-mongodb
     spec:
-      initContainers:
-        - name: init-mongodb
-          image: mongo:5.0
-          command: ["mongosh"]
-          args:
-            - --host
-            - localhost
-            - --eval
-            - |
-              while (!db.adminCommand('ping').ok) {
-                print('Waiting for MongoDB to be ready...');
-                sleep(1000);
-              }
-              load('/docker-entrypoint-initdb.d/init.js');
-          volumeMounts:
-            - name: init-scripts
-              mountPath: /docker-entrypoint-initdb.d
       containers:
         - name: mongodb
           env:

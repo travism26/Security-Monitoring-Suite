@@ -1,7 +1,7 @@
-import { Kafka, KafkaConfig } from 'kafkajs';
-import { Event } from './event';
-import { Publisher } from './base-kafka-producer';
-import { Consumer } from './base-kafka-consumer';
+import { Kafka, KafkaConfig } from "kafkajs";
+import { Event } from "./event";
+import { Publisher } from "./base-kafka-producer";
+import { Consumer } from "./base-kafka-consumer";
 
 class KafkaWrapper {
   private static _instance: KafkaWrapper;
@@ -30,7 +30,7 @@ class KafkaWrapper {
    */
   initialize(
     brokers: string[],
-    clientId: string = 'auth',
+    clientId: string = "auth",
     options?: KafkaConfig
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -46,11 +46,11 @@ class KafkaWrapper {
         admin
           .connect()
           .then(() => {
-            console.log('Connected to Kafka');
+            console.log("Connected to Kafka");
             resolve();
           })
           .catch((err) => {
-            console.error('Failed to connect to Kafka', err);
+            console.error("Failed to connect to Kafka", err);
             reject(err);
           });
       } else {
@@ -68,7 +68,7 @@ class KafkaWrapper {
    */
   getClient(): Kafka {
     if (!this._client) {
-      throw new Error('Kafka client is not initialized');
+      throw new Error("Kafka client is not initialized");
     }
     return this._client;
   }
@@ -86,22 +86,22 @@ class KafkaWrapper {
   getProducer(id: string): Publisher<Event> {
     if (!this._producers.has(id)) {
       if (!this._client) {
-        throw new Error('Kafka client is not initialized');
+        throw new Error("Kafka client is not initialized");
       }
       throw new Error(`Producer ${id} is not found`);
     }
-    console.log('Producer found');
+    console.log("Producer found");
     return this._producers.get(id)!;
   }
 
   getConsumer(id: string): Consumer<Event> {
     if (!this._consumers.has(id)) {
       if (!this._client) {
-        throw new Error('Kafka client is not initialized');
+        throw new Error("Kafka client is not initialized");
       }
       throw new Error(`Consumer ${id} is not found`);
     }
-    console.log('Consumer found');
+    console.log("Consumer found");
     return this._consumers.get(id)!;
   }
 
@@ -111,6 +111,37 @@ class KafkaWrapper {
    */
   isInitialized(): boolean {
     return !!this._client;
+  }
+
+  /**
+   * Disconnects all producers and consumers, and closes the Kafka client connection.
+   */
+  async disconnect(): Promise<void> {
+    try {
+      // Disconnect all producers
+      for (const [id, producer] of this._producers) {
+        await producer.disconnect();
+        this._producers.delete(id);
+      }
+
+      // Disconnect all consumers
+      for (const [id, consumer] of this._consumers) {
+        await consumer.disconnect();
+        this._consumers.delete(id);
+      }
+
+      // Disconnect the admin client if it exists
+      if (this._client) {
+        const admin = this._client.admin();
+        await admin.disconnect();
+      }
+
+      this._client = null;
+      console.log("Kafka disconnected successfully");
+    } catch (error) {
+      console.error("Error disconnecting from Kafka:", error);
+      throw error;
+    }
   }
 }
 

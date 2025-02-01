@@ -2,7 +2,8 @@ FROM node:alpine
 
 WORKDIR /app
 COPY package.json .
-RUN npm install --omit=dev
+# Install all dependencies since we need typescript and ts-node in production
+RUN npm install
 COPY . .
 
-CMD [ "npm", "start" ]
+CMD [ "npm", "run", "start:prod" ]
