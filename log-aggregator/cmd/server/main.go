@@ -116,9 +116,16 @@ func main() {
 		}
 	}()
 
-	// Initialize HTTP server with middleware
-	router := gin.Default()
-	router.Use(
+	// Initialize HTTP server with minimal middleware
+	router := gin.New()
+	router.Use(gin.Recovery()) // Add recovery middleware globally for safety
+
+	// Register health check endpoints directly on the router (no auth required)
+	handler.RegisterHealthRoutes(router)
+
+	// Create API router group with full middleware stack
+	apiRouter := router.Group("/api/v1")
+	apiRouter.Use(
 		middleware.CORS(),
 		middleware.RequestID(),
 		middleware.Logger(),
@@ -126,15 +133,29 @@ func main() {
 		middleware.Tenant(), // Add tenant middleware for multi-tenancy support
 	)
 
-	// Register health check endpoints
-	handler.RegisterHealthRoutes(router)
-
-	// Register API routes
+	// Register API routes on the authenticated router group
 	logHandler := handler.NewLogHandler(logService)
 	alertHandler := handler.NewAlertHandler(alertService)
-	handler.RegisterAPIRoutes(router, logHandler, alertHandler, handler.APIConfig{
-		APIKeys: cfg.API.Keys,
-	})
+
+	// Register routes without the /api/v1 prefix since it's already in the group
+	logs := apiRouter.Group("/logs")
+	{
+		logs.GET("", logHandler.ListLogs)
+		logs.GET("/:id", logHandler.GetLog)
+		logs.GET("/range", logHandler.ListLogsByTimeRange)
+		logs.POST("", logHandler.StoreLog)
+		logs.POST("/batch", logHandler.StoreBatchLogs)
+	}
+
+	alerts := apiRouter.Group("/alerts")
+	{
+		alerts.GET("", alertHandler.ListAlerts)
+		alerts.GET("/:id", alertHandler.GetAlert)
+		alerts.GET("/status/:status", alertHandler.ListAlertsByStatus)
+		alerts.GET("/severity/:severity", alertHandler.ListAlertsBySeverity)
+		alerts.GET("/trends", alertHandler.GetAlertTrends)
+		alerts.PUT("/:id/status", alertHandler.UpdateAlertStatus)
+	}
 
 	// Create HTTP server with timeout configurations
 	srv := &http.Server{

@@ -117,12 +117,17 @@ Status: Completed
   - Used window functions for better sorting
 
 ### 5. Monitoring and Metrics [Priority: Medium]
-Status: Pending
-- [ ] Add service health endpoints
+Status: In Progress
+- [x] Add service health endpoints
 - [ ] Implement metric collection
 - [ ] Add logging for system operations
 - [ ] Create dashboard configurations
 - [ ] Set up alerting for service health
+
+[2025-02-01]
+- Fixed health endpoint authentication issue by moving health route registration before global middleware
+- Ensured health and readiness endpoints are accessible without authentication for Kubernetes probes
+- Maintained security for all other routes with proper middleware chain
 
 ### 6. Add multi tenancy functionality [Priority: High]
 Status: In Progress
