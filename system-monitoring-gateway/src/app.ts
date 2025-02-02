@@ -43,9 +43,9 @@ app.get("/health", async (req, res) => {
 });
 
 // User, Team, and API key management routes
-app.use(usersRouter);
-app.use(teamsRouter);
-app.use(apiKeysRouter);
+app.use("/gateway/api/v1", usersRouter);
+app.use("/gateway/api/v1", teamsRouter);
+app.use("/gateway/api/v1", apiKeysRouter);
 
 // Apply authentication and tenant validation to protected routes
 app.use("/api/teams", requireAuth);

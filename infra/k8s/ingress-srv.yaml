@@ -73,14 +73,14 @@ spec:
                 port:
                   number: 8080
 
-          # # Next.js Static Files
-          # - path: /_next/(.*)
-          #   pathType: ImplementationSpecific
-          #   backend:
-          #     service:
-          #       name: siem-dashboard-srv
-          #       port:
-          #         number: 3000
+          # Next.js Static Files
+          - path: /_next/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: siem-dashboard-srv
+                port:
+                  number: 3000
 
           # Security Dashboard (catch-all)
           - path: /(.*)

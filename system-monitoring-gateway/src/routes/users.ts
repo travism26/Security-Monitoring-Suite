@@ -66,7 +66,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
 });
 
 // Mount auth routes
-usersRouter.use("/gateway/api/v1/auth", authRouter);
+usersRouter.use("/auth", authRouter);
 
 // Protected routes
 const protectedRouter = express.Router();
@@ -75,7 +75,7 @@ protectedRouter.use(requireAuth);
 protectedRouter.use(validateTenantConsistency);
 
 // Mount protected routes
-usersRouter.use("/gateway/api/v1/users", protectedRouter);
+usersRouter.use("/users", protectedRouter);
 
 // Get current user profile
 protectedRouter.get("/me", async (req: Request, res: Response) => {
