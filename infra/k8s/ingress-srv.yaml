@@ -31,7 +31,7 @@ spec:
       http:
         paths:
           # System Monitoring Gateway
-          - path: /api/v1/metrics(/|$)(.*)
+          - path: /gateway/api/v1(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -40,7 +40,7 @@ spec:
                   number: 3000
 
           # Log Aggregator
-          - path: /api/v1/logs(/|$)(.*)
+          - path: /logs/api/v1(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:
@@ -49,7 +49,15 @@ spec:
                   number: 8080
 
           # Health Check Endpoints
-          - path: /health/gateway(/|$)(.*)
+          - path: /health(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: system-monitoring-gateway
+                port:
+                  number: 3000
+
+          - path: /metrics(/|$)(.*)
             pathType: ImplementationSpecific
             backend:
               service:

@@ -13,6 +13,23 @@ spec:
   selector:
     app: system-monitoring-mongodb
 ---
+# MongoDB Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-monitoring-mongodb
+  labels:
+    app: system-monitoring-mongodb
+spec:
+  ports:
+    - port: 27017
+      targetPort: 27017
+      nodePort: 30090 # This is the NodePort to access Prometheus externally
+      protocol: TCP
+  type: NodePort
+  selector:
+    app: system-monitoring-mongodb
+---
 # MongoDB StatefulSet
 apiVersion: apps/v1
 kind: StatefulSet

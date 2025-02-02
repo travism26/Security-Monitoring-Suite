@@ -181,3 +181,122 @@ After implementing the fix, verify:
 5. Logs show correct number of middleware handlers for each route
 
 Remember to always test health endpoints both locally and in Kubernetes environment after making middleware changes.
+
+## Testing Service Endpoints
+
+### Prerequisites
+
+- `curl` installed for HTTP requests
+- `jq` installed for JSON formatting (optional but recommended)
+- Valid API key for authenticated endpoints
+- Access to the Kubernetes cluster
+
+### 1. Testing Gateway Service Endpoints
+
+#### Health and Metrics (Internal)
+
+```bash
+# Test health endpoint
+curl -i https://security.dev/health
+
+# Test metrics endpoint
+curl -i https://security.dev/metrics
+```
+
+Expected response for health: HTTP 200 with `{"status": "OK"}`
+
+#### API Endpoints (Authenticated)
+
+```bash
+# Test system metrics ingestion
+curl -i -X POST https://security.dev/gateway/api/v1/system/metrics/ingest \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"data": {"metrics": {...}}, "timestamp": "2025-02-02T00:00:00Z"}'
+
+# Test API keys endpoint
+curl -i https://security.dev/gateway/api/v1/keys \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+### 2. Testing Log Aggregator Endpoints
+
+#### Health Endpoints (Internal)
+
+```bash
+# Test health endpoint
+curl -i https://security.dev/health/logs
+
+# Test readiness endpoint
+curl -i https://security.dev/readiness
+```
+
+Expected response: HTTP 200 with `{"status": "healthy"}` or `{"status": "ready"}`
+
+#### API Endpoints (Authenticated)
+
+```bash
+# List logs
+curl -i https://security.dev/logs/api/v1/logs \
+  -H "x-api-key: YOUR_API_KEY"
+
+# Store a log
+curl -i -X POST https://security.dev/logs/api/v1/logs \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"message": "test log", "level": "info"}'
+
+# List alerts
+curl -i https://security.dev/logs/api/v1/alerts \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+### 3. Troubleshooting Common Issues
+
+1. **401 Unauthorized**
+
+   - Verify API key or JWT token is valid
+   - Check if token is properly formatted in header
+   - Ensure you're using the correct authentication method for the endpoint
+
+2. **404 Not Found**
+
+   - Verify the URL path is correct with proper prefix
+   - Check ingress configuration is properly routing the path
+   - Ensure service and pods are running
+
+3. **503 Service Unavailable**
+   - Check if pods are running and ready
+   - Verify Kafka connection for metrics ingestion
+   - Check database connectivity for log aggregator
+
+### 4. Kubernetes Verification
+
+```bash
+# Check pod status
+kubectl get pods
+
+# Check ingress configuration
+kubectl describe ingress ingress-srv
+
+# View service logs
+kubectl logs -l app=system-monitoring-gateway
+kubectl logs -l app=log-aggregator
+
+# Port forward for local testing
+kubectl port-forward svc/system-monitoring-gateway 3000:3000
+kubectl port-forward svc/log-aggregator-srv 8080:8080
+```
+
+### 5. Best Practices for Testing
+
+1. Test health endpoints first to ensure basic connectivity
+2. Test unauthenticated endpoints before authenticated ones
+3. Use proper HTTP methods (GET, POST, PUT, DELETE)
+4. Include all required headers
+5. Test with invalid authentication to verify security
+6. Monitor logs while testing to catch issues
+7. Test both success and error cases
+8. Verify proper error responses and status codes
+
+Remember to replace placeholders (YOUR_API_KEY, YOUR_JWT_TOKEN) with actual values, and adjust the security.dev domain to match your environment.
