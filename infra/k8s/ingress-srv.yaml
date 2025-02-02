@@ -30,15 +30,6 @@ spec:
     - host: security.dev
       http:
         paths:
-          # Security Dashboard (root path)
-          - path: /(/|$)(.*)
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: siem-dashboard-srv
-                port:
-                  number: 3000
-
           # System Monitoring Gateway
           - path: /api/v1/metrics(/|$)(.*)
             pathType: ImplementationSpecific
@@ -73,3 +64,21 @@ spec:
                 name: log-aggregator-srv
                 port:
                   number: 8080
+
+          # Next.js Static Files
+          - path: /_next/(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: siem-dashboard-srv
+                port:
+                  number: 3000
+
+          # Security Dashboard (catch-all)
+          - path: /(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: siem-dashboard-srv
+                port:
+                  number: 3000

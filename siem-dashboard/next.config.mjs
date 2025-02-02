@@ -31,6 +31,10 @@ const nextConfig = {
           source: '/',
           destination: '/login',
         },
+        {
+          source: '/dashboard',
+          destination: '/dashboard/index',
+        },
       ],
     }
   },
