@@ -89,23 +89,20 @@ kind: ConfigMap
 metadata:
   name: system-monitoring-config
 data:
-  kafka-broker: "systems-kafka-cluster-kafka-bootstrap:9092"
+  # Kafka broker address updated to point to kafka namespace
+  kafka-broker: "systems-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
   kafka-client-id: "system-monitoring-gateway" # Ill use pod.metadata.name
 ---
-# https://localhost:30001/
-# endpoint: /metrics
-# endpoint: /health
-# endpoint: /api/v1/system-metrics/ingest
+# Internal service for metrics endpoint
 apiVersion: v1
 kind: Service
 metadata:
   name: system-monitoring-gateway-metrics
 spec:
-  type: NodePort
+  type: ClusterIP
   selector:
     app: system-monitoring-gateway
   ports:
     - port: 3000
       targetPort: 3000
       protocol: TCP
-      nodePort: 30001

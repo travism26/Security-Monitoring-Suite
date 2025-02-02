@@ -4,7 +4,7 @@ server:
 
 kafka:
   brokers:
-    - "systems-kafka-cluster-kafka-bootstrap:9092"
+    - "systems-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
   topic: "system-metrics"
   group_id: "log-aggregator-group"
 
@@ -27,7 +27,8 @@ logging:
 api:
   cors:
     allowed_origins:
-      - "http://localhost:3000"
+      - "https://security.dev"
+      - "https://*.security.dev"
     allowed_methods:
       - "GET"
       - "POST"

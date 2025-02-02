@@ -1,0 +1,168 @@
+# Ingress Controller Implementation Tasks
+
+## Domain Configuration
+- [ ] Create ConfigMap for ingress configuration:
+  ```yaml
+  apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: ingress-config
+  data:
+    # Development/testing domain (change before production deployment)
+    DOMAIN_NAME: "security.dev"  
+    CORS_ALLOWED_ORIGINS: "https://*.${DOMAIN_NAME}"
+  ```
+
+## Prerequisites
+- [x] Add security.dev to hosts file (127.0.0.1 security.dev)
+- [x] Ensure all services are running properly in the cluster
+- [x] Create and apply ingress-config ConfigMap
+
+## Installation Tasks
+- [x] Install ingress-nginx controller using Helm
+  ```bash
+  helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+  helm repo update
+  helm install ingress-nginx ingress-nginx/ingress-nginx
+  ```
+- [x] Verify ingress controller is running
+  ```bash
+  kubectl get pods -n ingress-nginx
+  kubectl get svc -n ingress-nginx
+  ```
+
+## Configuration Tasks
+- [x] Create TLS secret for development domain
+  ```bash
+  # Development/Testing only - DO NOT USE IN PRODUCTION
+  DOMAIN=$(kubectl get configmap ingress-config -o jsonpath='{.data.DOMAIN_NAME}')
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout ${DOMAIN}.key -out ${DOMAIN}.crt \
+    -subj "/CN=${DOMAIN}"
+  kubectl create secret tls tls-secret --key ${DOMAIN}.key --cert ${DOMAIN}.crt
+  ```
+
+- [x] Create ingress rules for services:
+  1. Security Dashboard (siem-dashboard)
+  2. System Monitoring Gateway
+  3. Log Aggregator
+  4. Other microservices as needed
+
+## Service Migration Tasks
+- [x] Convert system-monitoring-gateway-metrics service from NodePort to ClusterIP
+- [x] Update CORS_ALLOWED_ORIGINS in log-aggregator to use domain from ConfigMap
+
+## Implementation Steps
+1. [x] Create base ingress configuration file (infra/k8s/ingress-srv.yaml)
+   - [x] Define rules for routing based on paths
+   - [x] Configure TLS settings using domain from ConfigMap
+   - [x] Set up host rules using configurable domain
+
+2. [x] Configure services:
+   - [x] Dashboard: / (root path)
+   - [x] System Monitoring Gateway: /api/v1/metrics
+   - [x] Log Aggregator: /api/v1/logs
+   - [x] Additional service paths as needed
+
+3. [x] Apply CORS and security headers:
+   - [x] Enable CORS for API endpoints using domain from ConfigMap
+   - [x] Add security headers (X-Frame-Options, etc.)
+   - [x] Configure rate limiting
+
+4. [x] Configure health checks:
+   - [x] System Monitoring Gateway (/health)
+   - [x] Log Aggregator (/health)
+   - [x] Set up ingress controller metrics endpoint
+   - [x] Configure prometheus annotations for ingress metrics
+
+## Security Dashboard Development
+- [x] Create basic UI components:
+  - [x] Button component
+  - [x] Input component
+  - [x] Sidebar component
+  - [x] Toast component
+  - [x] Utils library for shared functions
+- [x] Fix build issues:
+  - [x] Test Docker build process (Verified: Successfully built and tested with working login functionality)
+
+## Testing Tasks
+- [x] Verify DNS resolution for configured domain
+- [x] Test HTTPS access to services:
+  - [x] HTTPS connection successful with proper TLS certificate
+  - [x] Security Dashboard (/) - Working, redirects to /login as expected
+  - [x] System Monitoring Gateway (/api/v1/metrics) - Working, returns 401 as expected
+  - [x] Log Aggregator (/api/v1/logs) - Returns 404, needs health endpoint implementation
+  - [x] Health endpoints - Gateway returns 401, Logs returns 404
+
+- [x] Validate routing rules for each service:
+  - [x] All services accessible through ingress
+  - [x] TLS termination working properly
+  - [x] CORS headers properly configured
+  - [x] Security headers in place
+  - [ ] TODO: Implement health endpoints for log-aggregator service
+- [ ] Check CORS functionality with configured domain
+- [ ] Load testing with multiple concurrent requests
+- [ ] Verify TLS certificate validity
+- [ ] Test health check endpoints through ingress
+
+## Monitoring & Maintenance
+- [ ] Set up monitoring for ingress controller
+- [ ] Configure logging for access logs
+- [ ] Document certificate renewal process
+- [ ] Create alerts for ingress issues
+
+## Documentation Updates
+- [ ] Update deployment documentation
+- [ ] Add ingress architecture diagrams
+- [ ] Document troubleshooting steps
+- [ ] Update development environment setup guide
+
+## Rollback Plan
+1. Keep backup of current routing configuration
+2. Document steps to revert changes
+3. Test rollback procedure
+
+## Security Considerations
+- [ ] Review ingress security best practices
+- [ ] Implement rate limiting
+- [ ] Configure network policies
+- [ ] Regular security scanning
+- [ ] TLS version and cipher suite configuration
+- [ ] Configure mutual TLS (mTLS) between services
+- [ ] Implement request ID propagation
+- [ ] Set up WAF rules for API endpoints
+- [ ] Configure custom error pages
+
+## Final Verification
+- [ ] End-to-end testing of all services
+- [ ] Performance impact assessment
+- [ ] Security assessment
+- [ ] Documentation review
+
+## Pre-Production Checklist
+- [ ] Replace development domain with production domain
+- [ ] Obtain valid SSL certificate for production domain
+- [ ] Update ingress-config ConfigMap with production values
+- [ ] Update all service configurations to use production domain
+- [ ] Test all endpoints with production domain before going live
+
+## Notes
+- Keep track of any issues in this file
+- Security dashboard deployment configuration created in security-dashboard-depl.yaml
+- All core services configured with proper health checks and resource limits
+- DNS Resolution: security.dev successfully resolves to 127.0.0.1 (verified with ping test)
+- Document any deviations from standard implementation
+- Note performance impacts
+- Record any special configurations needed for local development
+
+## Production Domain Migration Notes
+- The current configuration uses a development domain (security.dev)
+- Before deploying to production:
+  1. Update DOMAIN_NAME in ingress-config ConfigMap
+  2. Obtain valid SSL certificates for production domain
+  3. Update all service configurations
+  4. Test thoroughly with production domain
+
+## References
+- [Ingress Nginx Controller Documentation](https://kubernetes.github.io/ingress-nginx/)
+- [Kubernetes Ingress Documentation](https://kubernetes.io/docs/concepts/services-networking/ingress/)

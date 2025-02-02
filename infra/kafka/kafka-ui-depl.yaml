@@ -22,9 +22,9 @@ spec:
             - containerPort: 8080
           env:
             - name: KAFKA_CLUSTERS_0_NAME
-              value: 'systems-kafka-cluster'
+              value: "systems-kafka-cluster"
             - name: KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS
-              value: 'systems-kafka-cluster-kafka-bootstrap:9092'
+              value: "systems-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092"
 
 ---
 apiVersion: v1

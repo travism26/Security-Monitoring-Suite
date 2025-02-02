@@ -18,9 +18,10 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            # Kafka Configuration
+            # Kafka Configuration might need to change to use different namespace
+            # systems-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
             - name: KAFKA_BROKERS
-              value: systems-kafka-cluster-kafka-bootstrap:9092
+              value: systems-kafka-cluster-kafka-bootstrap.kafka.svc.cluster.local:9092
             - name: LOG_AGG_KAFKA_TOPIC
               value: system-metrics
             - name: LOG_AGG_KAFKA_GROUP_ID

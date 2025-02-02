@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: siem-dashboard
+  labels:
+    app: siem-dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: siem-dashboard
+  template:
+    metadata:
+      labels:
+        app: siem-dashboard
+    spec:
+      containers:
+        - name: siem-dashboard
+          image: travism26/siem-dashboard:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: siem-dashboard-srv
+  labels:
+    app: siem-dashboard
+spec:
+  type: ClusterIP
+  ports:
+    - port: 3000
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app: siem-dashboard

@@ -1,0 +1,75 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-srv
+  annotations:
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # Security headers
+    nginx.ingress.kubernetes.io/add-headers: |
+      X-Frame-Options: DENY
+      X-Content-Type-Options: nosniff
+      X-XSS-Protection: 1; mode=block
+    # Enable CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rpm: "300"
+    nginx.ingress.kubernetes.io/limit-connections: "10"
+    # Prometheus metrics
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - security.dev
+      secretName: tls-secret
+  rules:
+    - host: security.dev
+      http:
+        paths:
+          # Security Dashboard (root path)
+          - path: /(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: siem-dashboard-srv
+                port:
+                  number: 3000
+
+          # System Monitoring Gateway
+          - path: /api/v1/metrics(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: system-monitoring-gateway
+                port:
+                  number: 3000
+
+          # Log Aggregator
+          - path: /api/v1/logs(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: log-aggregator-srv
+                port:
+                  number: 8080
+
+          # Health Check Endpoints
+          - path: /health/gateway(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: system-monitoring-gateway
+                port:
+                  number: 3000
+
+          - path: /health/logs(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: log-aggregator-srv
+                port:
+                  number: 8080
