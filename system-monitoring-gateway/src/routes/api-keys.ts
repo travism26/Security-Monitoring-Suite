@@ -12,7 +12,7 @@ router.use(validateTenantConsistency);
 
 // Mount all routes under /api/v1/keys
 const apiKeysRouter = express.Router();
-apiKeysRouter.use("/api/v1/keys", router);
+apiKeysRouter.use("/gateway/api/v1/keys", router);
 
 // Generate new API key
 router.post("/", async (req: Request, res: Response) => {

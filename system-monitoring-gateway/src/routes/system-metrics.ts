@@ -20,7 +20,7 @@ const validateMetrics = [
 
 // "/api/v1/system",
 router.post(
-  "/api/v1/system/metrics/ingest",
+  "/gateway/api/v1/system/metrics/ingest",
   validateTenantConsistency,
   validateMetrics,
   validateRequest,

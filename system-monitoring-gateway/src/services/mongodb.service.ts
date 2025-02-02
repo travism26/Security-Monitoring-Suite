@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Tenant, TenantDoc } from "../models/tenant";
 import { ApiKey, ApiKeyDoc } from "../models/api-key";
+import { User, UserDoc } from "../models/user";
 
 export class MongoDBService {
   private static instance: MongoDBService;
@@ -111,6 +112,54 @@ export class MongoDBService {
     return Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 16).toString(16)
     ).join("");
+  }
+
+  // User Operations
+  async createUser(userData: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role?: string;
+    tenantId: mongoose.Types.ObjectId;
+    verificationToken?: string;
+  }): Promise<UserDoc> {
+    const user = User.build(userData);
+    return await user.save();
+  }
+
+  async getUserById(id: string): Promise<UserDoc | null> {
+    return await User.findById(id);
+  }
+
+  async getUserByEmail(email: string): Promise<UserDoc | null> {
+    return await User.findOne({ email });
+  }
+
+  async getUserByVerificationToken(token: string): Promise<UserDoc | null> {
+    return await User.findOne({ verificationToken: token });
+  }
+
+  async getUserByResetToken(token: string): Promise<UserDoc | null> {
+    return await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: new Date() },
+    });
+  }
+
+  async getUsersByTenant(tenantId: string): Promise<UserDoc[]> {
+    return await User.find({ tenantId: new mongoose.Types.ObjectId(tenantId) });
+  }
+
+  async updateUser(
+    id: string,
+    updates: Partial<Omit<UserDoc, "password">>
+  ): Promise<UserDoc | null> {
+    return await User.findByIdAndUpdate(id, updates, { new: true });
+  }
+
+  async deleteUser(id: string): Promise<UserDoc | null> {
+    return await User.findByIdAndDelete(id);
   }
 
   // Health Check
