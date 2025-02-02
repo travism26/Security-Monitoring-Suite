@@ -5,10 +5,13 @@ import { JWTService } from "../services/jwt.service";
 import { validateTenantConsistency } from "../middlewares/validate-tenant";
 import { UserService } from "../services/user.service";
 
-const router = express.Router();
+// Create the main router
+const usersRouter = express.Router();
 
-// All routes require JWT authentication except registration and login
-router.post("/gateway/register", async (req: Request, res: Response) => {
+// Auth routes (no auth required)
+const authRouter = express.Router();
+
+authRouter.post("/register", async (req: Request, res: Response) => {
   const { email, password, firstName, lastName, tenantId } = req.body;
 
   try {
@@ -40,7 +43,7 @@ router.post("/gateway/register", async (req: Request, res: Response) => {
   }
 });
 
-router.post("/gateway/login", async (req: Request, res: Response) => {
+authRouter.post("/login", async (req: Request, res: Response) => {
   const { email, password } = req.body;
 
   try {
@@ -62,17 +65,20 @@ router.post("/gateway/login", async (req: Request, res: Response) => {
   }
 });
 
-// Protected routes
-router.use(validateJWT);
-router.use(requireAuth);
-router.use(validateTenantConsistency);
+// Mount auth routes
+usersRouter.use("/gateway/api/v1/auth", authRouter);
 
-// Mount all protected routes under /api/v1/users
-const usersRouter = express.Router();
-usersRouter.use("/gateway/api/v1/users", router);
+// Protected routes
+const protectedRouter = express.Router();
+protectedRouter.use(validateJWT);
+protectedRouter.use(requireAuth);
+protectedRouter.use(validateTenantConsistency);
+
+// Mount protected routes
+usersRouter.use("/gateway/api/v1/users", protectedRouter);
 
 // Get current user profile
-router.get("/me", async (req: Request, res: Response) => {
+protectedRouter.get("/me", async (req: Request, res: Response) => {
   const userId = req.currentUser!.id;
   const user = await UserService.getUserById(userId);
 
@@ -84,7 +90,7 @@ router.get("/me", async (req: Request, res: Response) => {
 });
 
 // Update user profile
-router.patch("/gateway/me", async (req: Request, res: Response) => {
+protectedRouter.patch("/me", async (req: Request, res: Response) => {
   const userId = req.currentUser!.id;
   const { firstName, lastName } = req.body;
 
@@ -106,14 +112,14 @@ const requireAdmin = (req: Request, res: Response, next: Function) => {
 };
 
 // List users (admin only)
-router.get("/gateway/", requireAdmin, async (req: Request, res: Response) => {
+protectedRouter.get("/", requireAdmin, async (req: Request, res: Response) => {
   const tenantId = req.currentUser!.tenantId;
   const users = await UserService.listUsersByTenant(tenantId);
   res.send(users);
 });
 
 // Create user (admin only)
-router.post("/gateway/", requireAdmin, async (req: Request, res: Response) => {
+protectedRouter.post("/", requireAdmin, async (req: Request, res: Response) => {
   const { email, password, firstName, lastName, role } = req.body;
   const tenantId = req.currentUser!.tenantId;
 
@@ -139,8 +145,8 @@ router.post("/gateway/", requireAdmin, async (req: Request, res: Response) => {
 });
 
 // Update user (admin only)
-router.patch(
-  "/gateway/:userId",
+protectedRouter.patch(
+  "/:userId",
   requireAdmin,
   async (req: Request, res: Response) => {
     const { userId } = req.params;
@@ -165,7 +171,7 @@ router.patch(
 );
 
 // Password reset request
-router.post("/gateway/forgot-password", async (req: Request, res: Response) => {
+authRouter.post("/forgot-password", async (req: Request, res: Response) => {
   const { email } = req.body;
 
   const success = await UserService.initiatePasswordReset(email);
@@ -174,7 +180,7 @@ router.post("/gateway/forgot-password", async (req: Request, res: Response) => {
 });
 
 // Reset password with token
-router.post("/gateway/reset-password", async (req: Request, res: Response) => {
+authRouter.post("/reset-password", async (req: Request, res: Response) => {
   const { token, newPassword } = req.body;
 
   const success = await UserService.resetPassword(token, newPassword);
@@ -186,18 +192,15 @@ router.post("/gateway/reset-password", async (req: Request, res: Response) => {
 });
 
 // Verify email
-router.get(
-  "/gateway/verify-email/:token",
-  async (req: Request, res: Response) => {
-    const { token } = req.params;
+authRouter.get("/verify-email/:token", async (req: Request, res: Response) => {
+  const { token } = req.params;
 
-    const success = await UserService.verifyEmail(token);
-    if (!success) {
-      return res.status(400).send({ message: "Invalid verification token" });
-    }
-
-    res.send({ message: "Email successfully verified" });
+  const success = await UserService.verifyEmail(token);
+  if (!success) {
+    return res.status(400).send({ message: "Invalid verification token" });
   }
-);
+
+  res.send({ message: "Email successfully verified" });
+});
 
 export { usersRouter };
