@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { requireAuth } from "../middleware/require-auth";
 import { validateJWT } from "../middleware/validate-jwt";
 import { JWTService } from "../services/jwt.service";
-import { validateTenantConsistency } from "../middlewares/validate-tenant";
+import { validateTenantConsistency } from "../middleware/validate-tenant";
 import { UserService } from "../services/user.service";
 
 // Create the main router
@@ -36,6 +36,8 @@ authRouter.post("/register", async (req: Request, res: Response) => {
       tenantId: user.tenantId,
       role: user.role,
     });
+
+    req.session = { jwt: token };
 
     res.status(201).send({ user, token });
   } catch (error) {

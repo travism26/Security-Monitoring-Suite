@@ -22,10 +22,10 @@ export const validateApiKey = async (
 
     // Add API key details to request for downstream use
     req.currentUser = {
-      id: validApiKey.userId.toString(),
+      id: validApiKey.tenantId.toString(), // Use tenantId as the identifier for API key auth
       tenantId: validApiKey.tenantId.toString(),
       role: "api",
-      email: "",
+      email: "", // API keys don't have associated emails
     };
 
     next();

@@ -1,7 +1,7 @@
 import express, { Request, Response } from "express";
 import { body } from "express-validator";
-import { validateRequest } from "../middlewares/validate-request";
-import { validateTenantConsistency } from "../middlewares/validate-tenant";
+import { validateRequest } from "../middleware/validate-request";
+import { validateTenantConsistency } from "../middleware/validate-tenant";
 import { metricsRegistry } from "./metrics";
 import { Counter } from "prom-client";
 import { SystemMetrics, SystemMetricsPayload } from "../payload/system-metrics";

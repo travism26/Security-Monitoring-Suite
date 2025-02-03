@@ -19,7 +19,9 @@ const app = express();
 
 // Initialize MongoDB connection
 const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb://localhost:27017/monitoring";
+  process.env.MONGODB_URI ||
+  "mongodb://localhost:30090/monitoring" ||
+  "mongodb://localhost:27017/monitoring";
 mongoDBService.connect(MONGODB_URI).catch((err) => {
   console.error("Failed to connect to MongoDB:", err);
   process.exit(1);
