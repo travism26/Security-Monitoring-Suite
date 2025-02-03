@@ -74,7 +74,9 @@ usersRouter.use("/auth", authRouter);
 const protectedRouter = express.Router();
 protectedRouter.use(validateJWT);
 protectedRouter.use(requireAuth);
-protectedRouter.use(validateTenantConsistency);
+// Disabling this middleware for now not needed yet
+// plus i didnt finish planning how i want tenants to work yet ... thinking...
+// protectedRouter.use(validateTenantConsistency);
 
 // Mount protected routes
 usersRouter.use("/users", protectedRouter);
