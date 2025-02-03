@@ -81,6 +81,7 @@ usersRouter.use("/users", protectedRouter);
 
 // Get current user profile
 protectedRouter.get("/me", async (req: Request, res: Response) => {
+  console.log("Current user", req.currentUser);
   const userId = req.currentUser!.id;
   const user = await UserService.getUserById(userId);
 

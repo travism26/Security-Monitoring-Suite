@@ -22,10 +22,11 @@ export const requireAuth = (
   res: Response,
   next: NextFunction
 ) => {
+  console.log("requireAuth - req.currentUser", req.currentUser);
   if (!req.currentUser) {
     throw new NotAuthorizedError();
   }
-
+  console.log("requireAuth - passed");
   next();
 };
 
@@ -35,6 +36,8 @@ export const validateJWT = (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
+  console.log("authHeader", authHeader);
+  console.log(`req.session`, req?.session);
 
   if (!authHeader?.startsWith("Bearer ")) {
     throw new NotAuthorizedError();

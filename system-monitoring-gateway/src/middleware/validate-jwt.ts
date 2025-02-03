@@ -8,14 +8,24 @@ export const validateJWT = (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
+  console.log("authHeader", authHeader);
+  console.log(`req.currentUser`, req?.currentUser);
+  console.log(`req.session`, req?.session);
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    throw new NotAuthorizedError("Authorization header missing or invalid");
+  // if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  //   console.log("No auth header");
+  //   throw new NotAuthorizedError("Authorization header missing or invalid");
+  // }
+
+  if (!req.session?.jwt) {
+    // return next();
+    throw new NotAuthorizedError("Not Authorized");
   }
 
   try {
-    const token = authHeader.split(" ")[1];
+    const token = req.session.jwt;
     const payload = JWTService.verifyToken(token);
+    console.log("payload", payload);
     req.currentUser = payload;
     next();
   } catch (error) {
