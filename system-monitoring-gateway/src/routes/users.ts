@@ -87,6 +87,7 @@ usersRouter.use("/users", protectedRouter);
 protectedRouter.get("/me", async (req: Request, res: Response) => {
   console.log("Current user", req.currentUser);
   const userId = req.currentUser!.id;
+  // This can be cleaned up and remove some DB related details (like createdAT, updatedAt, etc)
   const user = await UserService.getUserById(userId);
 
   if (!user) {
