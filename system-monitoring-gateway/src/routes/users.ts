@@ -61,6 +61,8 @@ authRouter.post("/login", async (req: Request, res: Response) => {
       role: user.role,
     });
 
+    // Attach the JWT to the session cookie
+    req.session = { jwt: token };
     res.send({ user, token });
   } catch (error) {
     res.status(400).send({ message: "Invalid login attempt" });
