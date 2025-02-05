@@ -7,8 +7,8 @@ import (
 )
 
 func RegisterHealthRoutes(router *gin.Engine) {
-	router.GET("/logs/health", healthCheck)
-	router.GET("/logs/readiness", readinessCheck)
+	router.GET("/health", healthCheck)
+	router.GET("/readiness", readinessCheck)
 }
 
 func healthCheck(c *gin.Context) {
