@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // In production
 interface UserPayload {
   id: string;
   email: string;
-  tenantId: string;
+  tenantId?: string;
   role: string;
 }
 

@@ -8,7 +8,7 @@ interface UserDoc extends mongoose.Document {
   firstName: string;
   lastName: string;
   role: string;
-  tenantId: mongoose.Types.ObjectId;
+  tenantId?: mongoose.Types.ObjectId;
   status: string;
   lastLogin?: Date;
   emailVerified: boolean;
@@ -28,7 +28,7 @@ interface UserModel extends mongoose.Model<UserDoc> {
     firstName: string;
     lastName: string;
     role?: string;
-    tenantId: mongoose.Types.ObjectId;
+    tenantId?: mongoose.Types.ObjectId;
     status?: string;
     emailVerified?: boolean;
   }): UserDoc;
@@ -61,14 +61,14 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      required: true,
+      required: false,
       enum: ["admin", "team_lead", "member"],
       default: "member",
     },
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
-      required: true,
+      required: false,
     },
     status: {
       type: String,
@@ -127,7 +127,7 @@ userSchema.statics.build = (attrs: {
   firstName: string;
   lastName: string;
   role?: string;
-  tenantId: mongoose.Types.ObjectId;
+  tenantId?: mongoose.Types.ObjectId;
   status?: string;
   emailVerified?: boolean;
 }) => {

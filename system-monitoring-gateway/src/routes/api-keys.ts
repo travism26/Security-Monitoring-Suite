@@ -8,7 +8,9 @@ const router = express.Router();
 // All routes require JWT authentication
 router.use(validateJWT);
 router.use(requireAuth);
+// Tenant validation is optional in design phase
 router.use(validateTenantConsistency);
+// Note: Tenant validation is currently optional during design phase
 
 // Mount all routes under /api/v1/keys
 const apiKeysRouter = express.Router();

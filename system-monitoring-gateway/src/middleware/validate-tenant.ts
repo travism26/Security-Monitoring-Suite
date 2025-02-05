@@ -10,12 +10,14 @@ export const validateTenantConsistency = async (
   const headerTenantId = req.headers["x-tenant-id"] as string;
   const headerEnvironment = req.headers["x-tenant-environment"] as string;
 
+  // If no tenant headers are provided, log and proceed
   if (!headerTenantId || !headerEnvironment) {
-    console.log("Headers", req.headers);
-    throw new BadRequestError("Missing required tenant headers");
+    console.log("No tenant headers provided - proceeding in non-tenant mode");
+    return next();
   }
 
-  if (tenantId && headerTenantId !== tenantId) {
+  // Only validate tenant consistency if both user context and header tenant IDs exist
+  if (tenantId && headerTenantId && headerTenantId !== tenantId) {
     console.log("Tenant ID mismatch", tenantId, headerTenantId);
     throw new ForbiddenError(
       "Tenant ID mismatch between user context and headers"
@@ -23,19 +25,36 @@ export const validateTenantConsistency = async (
   }
 
   // For POST requests, validate tenant ID and environment in body matches headers
+  // Only validate POST request tenant consistency if tenant information is provided
   if (req.method === "POST" && req.body?.data?.metadata) {
-    console.log("Validating tenant consistency in POST request");
+    console.log("Checking tenant consistency in POST request");
     const payloadTenantId = req.body.data.metadata.tenant_id;
     const payloadEnvironment = req.body.data.metadata.environment;
 
-    if (headerTenantId !== payloadTenantId) {
+    // Skip validation if payload doesn't include tenant information
+    if (!payloadTenantId || !payloadEnvironment) {
+      console.log("No tenant information in payload - proceeding");
+      return next();
+    }
+
+    // Only validate if both header and payload tenant IDs exist
+    if (
+      headerTenantId &&
+      payloadTenantId &&
+      headerTenantId !== payloadTenantId
+    ) {
       console.log("Tenant ID mismatch", headerTenantId, payloadTenantId);
       throw new BadRequestError(
         "Tenant ID mismatch between headers and payload"
       );
     }
 
-    if (headerEnvironment !== payloadEnvironment) {
+    // Only validate if both header and payload environments exist
+    if (
+      headerEnvironment &&
+      payloadEnvironment &&
+      headerEnvironment !== payloadEnvironment
+    ) {
       console.log(
         `Environment mismatch`,
         headerEnvironment,

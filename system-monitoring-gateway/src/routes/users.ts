@@ -33,7 +33,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
     const token = JWTService.generateToken({
       id: user.id,
       email: user.email,
-      tenantId: user.tenantId,
+      tenantId: user.tenantId || "",
       role: user.role,
     });
 
@@ -41,6 +41,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
 
     res.status(201).send({ user, token });
   } catch (error) {
+    console.error("Error registering user:", error);
     res.status(400).send({ message: "Invalid user data" });
   }
 });
@@ -65,6 +66,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
     req.session = { jwt: token };
     res.send({ user, token });
   } catch (error) {
+    console.error("Error logging in user:", error);
     res.status(400).send({ message: "Invalid login attempt" });
   }
 });
@@ -122,6 +124,11 @@ const requireAdmin = (req: Request, res: Response, next: Function) => {
 // List users (admin only)
 protectedRouter.get("/", requireAdmin, async (req: Request, res: Response) => {
   const tenantId = req.currentUser!.tenantId;
+  // if (!tenantId) {
+  //   return res
+  //     .status(400)
+  //     .send({ message: "Tenant ID is required for this operation" });
+  // }
   const users = await UserService.listUsersByTenant(tenantId);
   res.send(users);
 });
@@ -130,7 +137,6 @@ protectedRouter.get("/", requireAdmin, async (req: Request, res: Response) => {
 protectedRouter.post("/", requireAdmin, async (req: Request, res: Response) => {
   const { email, password, firstName, lastName, role } = req.body;
   const tenantId = req.currentUser!.tenantId;
-
   try {
     const existingUser = await UserService.getUserByEmail(email);
     if (existingUser) {
@@ -143,11 +149,12 @@ protectedRouter.post("/", requireAdmin, async (req: Request, res: Response) => {
       firstName,
       lastName,
       role,
-      tenantId,
+      ...(tenantId && { tenantId }),
     });
 
     res.status(201).send(user);
   } catch (error) {
+    console.error("Error creating user:", error);
     res.status(400).send({ message: "Invalid user data" });
   }
 });
@@ -161,9 +168,12 @@ protectedRouter.patch(
     const { firstName, lastName, role, status } = req.body;
     const tenantId = req.currentUser!.tenantId;
 
-    // Verify user belongs to tenant
+    // Verify user belongs to tenant if tenant context exists
     const user = await UserService.getUserById(userId);
-    if (!user || user.tenantId !== tenantId) {
+    if (
+      !user ||
+      (req.currentUser!.tenantId && user.tenantId !== req.currentUser!.tenantId)
+    ) {
       return res.status(404).send({ message: "User not found" });
     }
 

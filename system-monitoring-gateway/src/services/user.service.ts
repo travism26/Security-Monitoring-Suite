@@ -9,7 +9,7 @@ export interface UserData {
   firstName: string;
   lastName: string;
   role: string;
-  tenantId: string;
+  tenantId?: string;
   status: string;
   lastLogin?: Date;
   emailVerified: boolean;
@@ -23,7 +23,7 @@ export interface CreateUserData {
   firstName: string;
   lastName: string;
   role?: string;
-  tenantId: string;
+  tenantId?: string;
 }
 
 export interface UpdateUserData {
@@ -40,7 +40,7 @@ const toUserData = (doc: UserDoc): UserData => ({
   firstName: doc.firstName,
   lastName: doc.lastName,
   role: doc.role,
-  tenantId: doc.tenantId.toString(),
+  tenantId: doc.tenantId?.toString(),
   status: doc.status,
   lastLogin: doc.lastLogin,
   emailVerified: doc.emailVerified,
@@ -50,9 +50,19 @@ const toUserData = (doc: UserDoc): UserData => ({
 
 export class UserService {
   static async createUser(userData: CreateUserData): Promise<UserData> {
+    // During design phase, tenant ID is optional
+    let tenantObjectId = undefined;
+    try {
+      if (userData.tenantId) {
+        tenantObjectId = new Types.ObjectId(userData.tenantId);
+      }
+    } catch (error) {
+      console.log("Invalid tenant ID format - proceeding without tenant");
+    }
+
     const user = await mongoDBService.createUser({
       ...userData,
-      tenantId: new Types.ObjectId(userData.tenantId),
+      tenantId: tenantObjectId,
       verificationToken: crypto.randomBytes(32).toString("hex"),
     });
     return toUserData(user);

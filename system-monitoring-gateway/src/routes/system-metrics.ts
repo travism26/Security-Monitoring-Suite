@@ -14,8 +14,9 @@ const validateMetrics = [
   body("data").notEmpty().withMessage("Data is required"),
   body("data.data.metrics").notEmpty().withMessage("Metrics data is required"),
   body("timestamp").isISO8601().withMessage("Invalid timestamp format"),
-  body("data.tenant").notEmpty().withMessage("Tenant information is required"),
-  body("data.tenant.id").notEmpty().withMessage("Tenant ID is required"),
+  // Tenant validation made optional
+  body("data.tenant").optional(),
+  body("data.tenant.id").optional(),
 ];
 
 // "/api/v1/system",
@@ -81,25 +82,29 @@ router.post(
         });
       }
 
-      // Validate tenant ID consistency
+      // Validate tenant ID consistency only if both header and payload tenant IDs exist
       const headerTenantId = req.headers["x-tenant-id"] as string;
-      if (headerTenantId !== data.tenant.id) {
-        const errorProducer = kafkaWrapper.getProducer("system-metrics-errors");
-        await errorProducer.publish({
-          error: "Tenant ID mismatch",
-          header_tenant_id: headerTenantId,
-          payload_tenant_id: data.tenant.id,
-          timestamp: new Date().toISOString(),
-        });
-        return res.status(400).json({
-          errors: [
-            { message: "Tenant ID mismatch between headers and payload" },
-          ],
-        });
+      if (headerTenantId && data.tenant?.id) {
+        if (headerTenantId !== data.tenant.id) {
+          const errorProducer = kafkaWrapper.getProducer(
+            "system-metrics-errors"
+          );
+          await errorProducer.publish({
+            error: "Tenant ID mismatch",
+            header_tenant_id: headerTenantId,
+            payload_tenant_id: data.tenant.id,
+            timestamp: new Date().toISOString(),
+          });
+          return res.status(400).json({
+            errors: [
+              { message: "Tenant ID mismatch between headers and payload" },
+            ],
+          });
+        }
       }
 
       // Handle malformed messages first
-      if (typeof data === "string" || !data.tenant) {
+      if (typeof data === "string") {
         const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
         await dlqProducer.publish({
           error: "Message processing failed",
@@ -118,7 +123,7 @@ router.post(
         await errorProducer.publish({
           error: "Validation failed",
           original_payload: req.body,
-          tenant_id: data.tenant.id,
+          tenant_id: data.tenant?.id || "no-tenant",
           timestamp: new Date().toISOString(),
         });
         return res.status(400).json({
@@ -145,7 +150,7 @@ router.post(
         await dlqProducer.publish({
           error: "Message processing failed",
           original_message: req.body,
-          tenant_id: data.tenant.id,
+          tenant_id: data.tenant?.id || "no-tenant",
           timestamp: new Date().toISOString(),
         });
 

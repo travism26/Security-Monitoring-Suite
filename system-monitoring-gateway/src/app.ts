@@ -51,6 +51,7 @@ app.use("/gateway/api/v1", apiKeysRouter);
 
 // Apply authentication and tenant validation to protected routes
 app.use("/api/teams", requireAuth);
+// Note: Tenant validation is optional during design phase
 app.use("/api/metrics", validateApiKey, validateTenantConsistency);
 
 // Apply tenant context and rate limiting to metric routes
@@ -58,6 +59,7 @@ if (process.env.NODE_ENV !== "test") {
   app.use(
     "/api/v1/metrics",
     validateApiKey,
+    // Note: Tenant validation is optional during design phase
     validateTenantConsistency,
     metricsRouter
   );
@@ -65,6 +67,7 @@ if (process.env.NODE_ENV !== "test") {
 app.use(
   "/api/system-metrics",
   validateApiKey,
+  // Note: Tenant validation is optional during design phase
   validateTenantConsistency,
   systemMetricsRouter
 );

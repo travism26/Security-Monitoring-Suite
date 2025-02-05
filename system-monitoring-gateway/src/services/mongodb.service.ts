@@ -121,7 +121,7 @@ export class MongoDBService {
     firstName: string;
     lastName: string;
     role?: string;
-    tenantId: mongoose.Types.ObjectId;
+    tenantId?: mongoose.Types.ObjectId;
     verificationToken?: string;
   }): Promise<UserDoc> {
     const user = User.build(userData);
@@ -148,7 +148,28 @@ export class MongoDBService {
   }
 
   async getUsersByTenant(tenantId: string): Promise<UserDoc[]> {
-    return await User.find({ tenantId: new mongoose.Types.ObjectId(tenantId) });
+    try {
+      // During design phase, handle invalid tenant IDs gracefully
+      const objectId = mongoose.Types.ObjectId.isValid(tenantId)
+        ? new mongoose.Types.ObjectId(tenantId)
+        : null;
+
+      if (!objectId) {
+        console.log("Invalid tenant ID format - returning empty list");
+        return [];
+      }
+
+      return await User.find({
+        tenantId: objectId,
+        $and: [{ tenantId: { $exists: true } }],
+      });
+    } catch (error) {
+      console.log(
+        "Error fetching users by tenant - returning empty list:",
+        error
+      );
+      return [];
+    }
   }
 
   async updateUser(
