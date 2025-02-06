@@ -3,13 +3,11 @@
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
-import { useTeam } from '../contexts/TeamContext'
 import { SidebarNav } from '../components/Sidebar'
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 
 export default function ThreatsPage() {
   const { user } = useAuth()
-  const { currentTeam } = useTeam()
   const router = useRouter()
 
   useEffect(() => {
@@ -18,7 +16,7 @@ export default function ThreatsPage() {
     }
   }, [user, router])
 
-  if (!user || !currentTeam) {
+  if (!user) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
@@ -29,7 +27,7 @@ export default function ThreatsPage() {
         <SidebarInset className="flex-1 overflow-auto">
           <main className="p-4 md:p-6 bg-background">
             <h1 className="text-3xl font-bold mb-6">
-              {currentTeam.name} - Threats
+              Threats
             </h1>
             <p>Threats content goes here.</p>
           </main>
@@ -38,4 +36,3 @@ export default function ThreatsPage() {
     </SidebarProvider>
   )
 }
-

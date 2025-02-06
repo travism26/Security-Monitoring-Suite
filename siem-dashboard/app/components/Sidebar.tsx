@@ -15,8 +15,6 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar"
 import { useAuth } from '../contexts/AuthContext'
-import { useTeam } from '../contexts/TeamContext'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 
 const menuItems = [
@@ -32,7 +30,6 @@ const menuItems = [
 export function SidebarNav() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
-  const { currentTeam, teams, switchTeam } = useTeam()
 
   return (
     <Sidebar>
@@ -69,19 +66,9 @@ export function SidebarNav() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <div className="p-4 space-y-4">
-          <Select onValueChange={switchTeam} value={currentTeam?.id}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select team" />
-            </SelectTrigger>
-            <SelectContent>
-              {teams.map((team) => (
-                <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="p-4">
           <div className="flex items-center justify-between">
-            <span className="text-sm">{user?.name}</span>
+            <span className="text-sm">{user?.firstName}</span>
             <Button variant="ghost" size="sm" onClick={logout}>
               <LogOut className="mr-2 h-4 w-4" />
               Logout
@@ -92,4 +79,3 @@ export function SidebarNav() {
     </Sidebar>
   )
 }
-

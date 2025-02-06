@@ -5,6 +5,9 @@ try {
   // ignore error
 }
 
+// UPDATE_BACKEND_BASE_URL: Replace with your k8s nodeport URL (e.g., http://cluster-ip:nodeport)
+const BACKEND_URL = 'http://localhost:30091' // Replace this URL
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   eslint: {
@@ -25,18 +28,16 @@ const nextConfig = {
   basePath: '',
   trailingSlash: true,
   async rewrites() {
-    return {
-      beforeFiles: [
-        {
-          source: '/',
-          destination: '/login',
-        },
-        {
-          source: '/dashboard',
-          destination: '/dashboard/index',
-        },
-      ],
-    }
+    return [
+      {
+        source: '/',
+        destination: '/login',
+      },
+      {
+        source: '/gateway/:path*',
+        destination: `${BACKEND_URL}/gateway/:path*`,
+      },
+    ]
   },
 }
 

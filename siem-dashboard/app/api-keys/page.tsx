@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
-import { useTeam } from '../contexts/TeamContext'
 import { SidebarNav } from '../components/Sidebar'
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
@@ -21,7 +20,6 @@ interface ApiKey {
 
 export default function ApiKeysPage() {
   const { user } = useAuth()
-  const { currentTeam } = useTeam()
   const router = useRouter()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [newKeyName, setNewKeyName] = useState('')
@@ -79,7 +77,7 @@ export default function ApiKeysPage() {
     })
   }
 
-  if (!user || !currentTeam) {
+  if (!user) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
@@ -90,7 +88,7 @@ export default function ApiKeysPage() {
         <SidebarInset className="flex-1 overflow-auto">
           <main className="p-4 md:p-6 bg-background">
             <h1 className="text-3xl font-bold mb-6">
-              {currentTeam.name} - API Keys
+              API Keys
             </h1>
             <Card className="mb-6">
               <CardHeader>
@@ -144,4 +142,3 @@ export default function ApiKeysPage() {
     </SidebarProvider>
   )
 }
-
