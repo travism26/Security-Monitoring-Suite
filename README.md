@@ -22,6 +22,69 @@ The CyberSecurity-Toolset repository is developed as an integrated security suit
 
 ---
 
+## System Architecture
+
+```mermaid
+flowchart TB
+    subgraph Agents["System Monitoring Agents"]
+        SMA1["Agent 1"]
+        SMA2["Agent 2"]
+        SMA3["Agent n"]
+    end
+
+    subgraph Gateway["System Monitoring Gateway"]
+        API["API Layer"]
+        Auth["Auth Service"]
+        Metrics["Metrics Service"]
+    end
+
+    subgraph Storage["Data Storage"]
+        MongoDB[(MongoDB)]
+        PostgreSQL[(PostgreSQL)]
+        Kafka[("Kafka Events")]
+    end
+
+    subgraph Processing["Processing Layer"]
+        LogAgg["Log Aggregator"]
+        TDS["Threat Detection"]
+        XDR["Mini XDR System"]
+    end
+
+    subgraph Frontend["SIEM Dashboard"]
+        UI["Web Interface"]
+        Analytics["Analytics"]
+        Alerts["Alert Management"]
+    end
+
+    %% Agent connections
+    SMA1 --> API
+    SMA2 --> API
+    SMA3 --> API
+
+    %% Gateway internal flow
+    API --> Auth
+    API --> Metrics
+    Auth --> MongoDB
+    Metrics --> Kafka
+
+    %% Storage connections
+    LogAgg --> PostgreSQL
+    LogAgg --> Kafka
+    Auth --> MongoDB
+
+    %% Processing connections
+    Kafka --> LogAgg
+    Kafka --> TDS
+    Kafka --> XDR
+
+    %% Frontend connections
+    UI --> API
+    Analytics --> LogAgg
+    Alerts --> LogAgg
+```
+
+---
+
 ## Components:
 
 1. **System Monitoring Agent**
