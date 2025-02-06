@@ -95,3 +95,9 @@ Port: 5432
 Database: logdb
 Username: postgres
 Password: mysecretpassword (from your postgres-secret)
+
+# When starting you need to run the following commands to apply the migrations
+
+```bash
+cd schemas/postgresql/log-aggregator && kubectl delete configmap postgres-migrations && kubectl create configmap postgres-migrations --from-file=logs.sql --from-file=alerts.sql && kubectl delete job postgres-migrations && kubectl apply -f ../../../infra/k8s/postgres-migrations-job.yaml
+```

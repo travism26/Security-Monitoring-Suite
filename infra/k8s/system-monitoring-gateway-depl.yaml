@@ -106,3 +106,20 @@ spec:
     - port: 3000
       targetPort: 3000
       protocol: TCP
+---
+# for local testing
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-monitoring-gateway-nodeport
+  labels:
+    app: system-monitoring-gateway
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30091 # This is the NodePort to access Prometheus externally
+      protocol: TCP
+  type: NodePort
+  selector:
+    app: system-monitoring-gateway

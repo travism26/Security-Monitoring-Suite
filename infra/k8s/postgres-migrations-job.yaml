@@ -17,18 +17,21 @@ spec:
                 sleep 2
               done
 
-              # Apply schemas in order
-              # Apply schemas in order (logs must be created before alerts due to foreign key constraints)
-              for schema in logs.sql alerts.sql; do
-                echo "Applying schema: $schema"
-                PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f /migrations/$schema
+              echo "Starting schema migrations..."
+
+              # Apply migrations in numerical order
+              cd /migrations
+              for migration in $(ls -v *.sql); do
+                echo "Applying migration: $migration"
+                PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres-srv -U $POSTGRES_USER -d $POSTGRES_DB -f $migration
                 if [ $? -ne 0 ]; then
-                  echo "Failed to apply schema: $schema"
+                  echo "Failed to apply migration: $migration"
                   exit 1
                 fi
+                echo "Successfully applied migration: $migration"
               done
 
-              echo "Database schemas applied successfully"
+              echo "All migrations completed successfully"
           env:
             - name: POSTGRES_DB
               value: logdb
@@ -42,13 +45,8 @@ spec:
           volumeMounts:
             - name: migrations
               mountPath: /migrations
-            - name: schemas
-              mountPath: /schemas
       volumes:
         - name: migrations
           configMap:
             name: postgres-migrations
-        - name: schemas
-          configMap:
-            name: postgres-schemas
       restartPolicy: OnFailure

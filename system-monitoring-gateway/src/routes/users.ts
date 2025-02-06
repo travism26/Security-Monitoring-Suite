@@ -12,6 +12,7 @@ const usersRouter = express.Router();
 const authRouter = express.Router();
 
 authRouter.post("/register", async (req: Request, res: Response) => {
+  console.log("Attmpeting to register user");
   const { email, password, firstName, lastName, tenantId } = req.body;
 
   try {
@@ -47,6 +48,7 @@ authRouter.post("/register", async (req: Request, res: Response) => {
 });
 
 authRouter.post("/login", async (req: Request, res: Response) => {
+  console.log("Attempting to login user");
   const { email, password } = req.body;
 
   try {
