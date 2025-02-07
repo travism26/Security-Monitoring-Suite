@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from "express";
 import { NotAuthorizedError } from "../errors";
 import { JWTService } from "../services/jwt.service";
+import { UserPayload } from "../types/auth";
+
+declare global {
+  namespace Express {
+    interface Request {
+      currentUser?: UserPayload;
+    }
+  }
+}
 
 export const validateJWT = (
   req: Request,

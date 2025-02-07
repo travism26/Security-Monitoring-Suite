@@ -1,13 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { NotAuthorizedError } from "../errors/not-authorized-error";
-
-interface UserPayload {
-  id: string;
-  email: string;
-  tenantId: string;
-  role: string;
-}
+import { UserPayload } from "../types/auth";
 
 declare global {
   namespace Express {

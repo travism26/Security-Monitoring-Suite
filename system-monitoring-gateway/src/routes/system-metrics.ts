@@ -151,7 +151,7 @@ router.post(
         await dlqProducer.publish({
           error: "Message processing failed",
           original_message: req.body,
-          tenant_id: metrics.tenant_id || "no-tenant",
+          tenant_id: data.tenant_id || "no-tenant",
           timestamp: new Date().toISOString(),
         });
 

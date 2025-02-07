@@ -60,7 +60,7 @@ authRouter.post("/login", async (req: Request, res: Response) => {
     const token = JWTService.generateToken({
       id: user.id,
       email: user.email,
-      tenantId: user.tenantId,
+      tenantId: user.tenantId || "",
       role: user.role,
     });
 

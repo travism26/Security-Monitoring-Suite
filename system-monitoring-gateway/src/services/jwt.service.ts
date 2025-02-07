@@ -1,13 +1,7 @@
 import jwt from "jsonwebtoken";
+import { UserPayload } from "../types/auth";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"; // In production, always use environment variable
-
-interface UserPayload {
-  id: string;
-  email: string;
-  tenantId?: string;
-  role: string;
-}
 
 export class JWTService {
   static generateToken(payload: UserPayload): string {
