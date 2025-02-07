@@ -1,19 +1,21 @@
 Tenant:
-  # Unique identifier for the organization/tenant
-  ID: ""
-  # API key for authentication
-  APIKey: ""
+  # Unique identifier for the organization/tenant (temporarily optional)
+  # Note: Tenant ID requirement is temporarily disabled
+  ID: "67a5da7f9f3f88e40759e219"
+  # API key for authentication (optional)
+  # Note: API key is optional - if provided, it will be used for authentication
+  APIKey: "sms_00305567449e4cb9e492bc09811e6fdbf16635a3ab7235f9"
   # Tenant organization name
-  Name: ""
+  Name: "Development Standard"
   # Environment (e.g., production, staging, development)
   Environment: "development"
   # Tenant type (e.g., enterprise, standard, basic)
   Type: "standard"
   # Tenant-specific endpoint overrides (optional)
   Endpoints:
-    Metrics: "http://localhost:30001/api/v1/system-metrics/ingest"
-    HealthCheck: "http://localhost:30001/api/v1/health"
-    KeyValidation: "http://localhost:30001/api/v1/validate-key"
+    Metrics: "https://security.dev/gateway/api/v1/system-metrics/ingest"
+    HealthCheck: "https://security.dev/gateway/api/v1/health"
+    KeyValidation: "https://security.dev/gateway/api/v1/validate-key"
   # Tenant-specific collection rules
   CollectionRules:
     # List of enabled metric types
@@ -24,7 +26,7 @@ Tenant:
       - "network"
       - "processes"
     # Collection frequency override (in seconds)
-    SampleRate: 60
+    SampleRate: 10
     # Data retention period (in days)
     RetentionDays: 7
 
@@ -88,5 +90,8 @@ Storage:
 # Security settings
 Security:
   EncryptData: true
-  ValidateSSL: true
+  ValidateSSL: false
   AllowedIPs: [] # Empty array means no IP restrictions
+  TLS:
+    CertFile: "security.dev.crt"
+    KeyFile: "security.dev.key"

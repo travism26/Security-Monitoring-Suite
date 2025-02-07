@@ -2,10 +2,14 @@ package exporter
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/travism26/shared-monitoring-libs/types"
@@ -34,13 +38,19 @@ func NewHTTPExporter(cfg *config.Config, storage MetricStorage) (*HTTPExporter, 
 		log.Println("HTTP exporter disabled: no endpoint configured")
 	}
 
-	// Initialize headers with tenant context
+	// Initialize headers
 	headers := map[string]string{
-		cfg.HTTP.Headers.TenantID: cfg.Tenant.ID,
-		cfg.HTTP.Headers.APIKey:   cfg.Tenant.APIKey,
-		"Content-Type":            "application/json",
-		"X-Tenant-Environment":    cfg.Tenant.Environment,
-		"X-Tenant-Type":           cfg.Tenant.Type,
+		"Content-Type":         "application/json",
+		"X-Tenant-Environment": cfg.Tenant.Environment,
+		"X-Tenant-Type":        cfg.Tenant.Type,
+	}
+
+	// Add optional tenant headers if provided
+	if cfg.Tenant.ID != "" {
+		headers[cfg.HTTP.Headers.TenantID] = cfg.Tenant.ID
+	}
+	if cfg.Tenant.APIKey != "" {
+		headers[cfg.HTTP.Headers.APIKey] = cfg.Tenant.APIKey
 	}
 
 	exporter := &HTTPExporter{
@@ -50,15 +60,7 @@ func NewHTTPExporter(cfg *config.Config, storage MetricStorage) (*HTTPExporter, 
 		storage:     storage,
 		config:      cfg,
 		headers:     headers,
-		client: &http.Client{
-			Timeout: time.Duration(cfg.HTTP.Timeout) * time.Second,
-			Transport: &http.Transport{
-				MaxIdleConns:       100,
-				IdleConnTimeout:    90 * time.Second,
-				DisableCompression: true,
-				DisableKeepAlives:  false,
-			},
-		},
+		client:      createHTTPClient(cfg),
 	}
 
 	go exporter.retryWorker()
@@ -98,11 +100,15 @@ func (h *HTTPExporter) Export(data types.MetricPayload) error {
 func (h *HTTPExporter) sendBatch(batch MetricBatch) error {
 	jsonData, err := json.Marshal(batch.Data)
 	if err != nil {
+		log.Printf("[ERROR] Failed to marshal metrics data: %v", err)
 		return fmt.Errorf("failed to marshal data: %w", err)
 	}
 
+	log.Printf("[DEBUG] Preparing to send metrics to endpoint: %s (payload size: %d bytes)", h.apiEndpoint, len(jsonData))
+
 	req, err := http.NewRequest("POST", h.apiEndpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
+		log.Printf("[ERROR] Failed to create HTTP request: %v", err)
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
@@ -110,17 +116,26 @@ func (h *HTTPExporter) sendBatch(batch MetricBatch) error {
 	for key, value := range h.headers {
 		req.Header.Set(key, value)
 	}
+	log.Printf("[DEBUG] Request headers: %v", req.Header)
 
 	// Do sends an HTTP request and returns an HTTP response
+	log.Printf("[DEBUG] Sending HTTP request to %s", h.apiEndpoint)
 	resp, err := h.client.Do(req)
 	if err != nil {
+		log.Printf("[ERROR] Failed to send metrics: %v", err)
 		return fmt.Errorf("failed to send metrics: %w", err)
 	}
 	defer resp.Body.Close()
 
+	// Read response body for error cases
+	body, _ := ioutil.ReadAll(resp.Body)
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf("[ERROR] Server returned non-success status %d. Response body: %s", resp.StatusCode, string(body))
 		return fmt.Errorf("server returned status %d", resp.StatusCode)
 	}
+
+	log.Printf("[DEBUG] Successfully sent metrics batch. Status: %d", resp.StatusCode)
 
 	if h.storage != nil {
 		h.storage.Remove(batch)
@@ -159,6 +174,61 @@ func (h *HTTPExporter) retryWorker() {
 				}
 			}
 		}
+	}
+}
+
+// createHTTPClient creates an HTTP client with TLS configuration
+func createHTTPClient(cfg *config.Config) *http.Client {
+	log.Printf("[DEBUG] Creating HTTP client with timeout: %d seconds", cfg.HTTP.Timeout)
+
+	// Create TLS config
+	tlsConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: !cfg.Security.ValidateSSL,
+	}
+
+	log.Printf("[DEBUG] TLS Configuration - MinVersion: TLS1.2, ValidateSSL: %v", cfg.Security.ValidateSSL)
+
+	// If TLS cert/key are configured, load them
+	if cfg.Security.TLS.CertFile != "" && cfg.Security.TLS.KeyFile != "" {
+		log.Printf("[DEBUG] Loading TLS certificate from: %s and key from: %s",
+			cfg.Security.TLS.CertFile, cfg.Security.TLS.KeyFile)
+
+		cert, err := tls.LoadX509KeyPair(
+			filepath.Clean(cfg.Security.TLS.CertFile),
+			filepath.Clean(cfg.Security.TLS.KeyFile),
+		)
+		if err != nil {
+			log.Printf("[ERROR] Failed to load TLS cert/key: %v", err)
+		} else {
+			log.Printf("[DEBUG] Successfully loaded TLS certificate")
+			// Add the certificate to the config
+			tlsConfig.Certificates = []tls.Certificate{cert}
+
+			// Create cert pool and add our certificate
+			certPool := x509.NewCertPool()
+			certData, err := ioutil.ReadFile(filepath.Clean(cfg.Security.TLS.CertFile))
+			if err != nil {
+				log.Printf("Warning: Failed to read certificate file: %v", err)
+			} else {
+				if ok := certPool.AppendCertsFromPEM(certData); !ok {
+					log.Printf("Warning: Failed to append certificate to pool")
+				} else {
+					tlsConfig.RootCAs = certPool
+				}
+			}
+		}
+	}
+
+	return &http.Client{
+		Timeout: time.Duration(cfg.HTTP.Timeout) * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig:    tlsConfig,
+			MaxIdleConns:       100,
+			IdleConnTimeout:    90 * time.Second,
+			DisableCompression: true,
+			DisableKeepAlives:  false,
+		},
 	}
 }
 

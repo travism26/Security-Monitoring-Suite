@@ -2,7 +2,6 @@
 package agent
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -35,12 +34,8 @@ func NewAgent(cfg *config.Config, mc *metrics.MetricsCollector, exporters ...exp
 
 // validateTenantContext checks if the tenant context is valid
 func (a *Agent) validateTenantContext() error {
-	if a.config.Tenant.ID == "" {
-		return fmt.Errorf("tenant ID is required")
-	}
-	if a.config.Tenant.APIKey == "" {
-		return fmt.Errorf("tenant API key is required")
-	}
+	// Temporarily disabled tenant ID requirement
+	// API key is now optional
 	return nil
 }
 

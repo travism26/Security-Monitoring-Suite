@@ -84,11 +84,18 @@ type StorageConfig struct {
 	CompressOldData     bool `yaml:"CompressOldData"`
 }
 
+// TLSConfig holds TLS-related configuration
+type TLSConfig struct {
+	CertFile string `yaml:"CertFile"`
+	KeyFile  string `yaml:"KeyFile"`
+}
+
 // SecurityConfig holds security-related configuration
 type SecurityConfig struct {
-	EncryptData bool     `yaml:"EncryptData"`
-	ValidateSSL bool     `yaml:"ValidateSSL"`
-	AllowedIPs  []string `yaml:"AllowedIPs"`
+	EncryptData bool      `yaml:"EncryptData"`
+	ValidateSSL bool      `yaml:"ValidateSSL"`
+	AllowedIPs  []string  `yaml:"AllowedIPs"`
+	TLS         TLSConfig `yaml:"TLS"`
 }
 
 // Config represents the complete configuration structure
@@ -262,6 +269,8 @@ func setDefaultConfig() {
 	viper.SetDefault("Security.EncryptData", true)
 	viper.SetDefault("Security.ValidateSSL", true)
 	viper.SetDefault("Security.AllowedIPs", []string{})
+	viper.SetDefault("Security.TLS.CertFile", "")
+	viper.SetDefault("Security.TLS.KeyFile", "")
 }
 
 // ReloadConfig reloads the configuration from disk

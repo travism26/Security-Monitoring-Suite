@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/travism26/shared-monitoring-libs/types"
+	"github.com/travism26/system-monitoring-agent/internal/config"
 )
 
 type Exporter interface {
@@ -16,8 +17,12 @@ type Exporter interface {
 
 func TestNewHTTPExporter(t *testing.T) {
 	// Test case 1: with endpoint
-	endpoint := "http://example.com"
-	exporter, err := NewHTTPExporter(endpoint, nil)
+	cfg := &config.Config{
+		HTTP: config.HTTPConfig{
+			Endpoint: "http://example.com",
+		},
+	}
+	exporter, err := NewHTTPExporter(cfg, nil)
 	if err != nil {
 		t.Fatalf("Failed to create exporter: %v", err)
 	}
@@ -25,12 +30,17 @@ func TestNewHTTPExporter(t *testing.T) {
 	if !exporter.enabled {
 		t.Error("Expected exporter to be enabled with endpoint")
 	}
-	if exporter.apiEndpoint != endpoint {
-		t.Errorf("Expected endpoint %s, got %s", endpoint, exporter.apiEndpoint)
+	if exporter.apiEndpoint != cfg.HTTP.Endpoint {
+		t.Errorf("Expected endpoint %s, got %s", cfg.HTTP.Endpoint, exporter.apiEndpoint)
 	}
 
 	// Test case 2: without endpoint (disabled)
-	disabledExporter, _ := NewHTTPExporter("", nil)
+	disabledCfg := &config.Config{
+		HTTP: config.HTTPConfig{
+			Endpoint: "",
+		},
+	}
+	disabledExporter, _ := NewHTTPExporter(disabledCfg, nil)
 	if disabledExporter.enabled {
 		t.Error("Expected exporter to be disabled without endpoint")
 	}
@@ -71,7 +81,12 @@ func TestHTTPExporter_Export(t *testing.T) {
 	t.Log("🌐 Test server started at:", server.URL)
 
 	// Create exporter with test server URL
-	exporter, err := NewHTTPExporter(server.URL, nil)
+	cfg := &config.Config{
+		HTTP: config.HTTPConfig{
+			Endpoint: server.URL,
+		},
+	}
+	exporter, err := NewHTTPExporter(cfg, nil)
 	if err != nil {
 		t.Fatalf("Failed to create exporter: %v", err)
 	}
@@ -126,7 +141,12 @@ func TestHTTPExporter_ExportError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	exporter, err := NewHTTPExporter(server.URL, nil)
+	cfg := &config.Config{
+		HTTP: config.HTTPConfig{
+			Endpoint: server.URL,
+		},
+	}
+	exporter, err := NewHTTPExporter(cfg, nil)
 	if err != nil {
 		t.Fatalf("Failed to create exporter: %v", err)
 	}
@@ -149,7 +169,12 @@ func TestHTTPExporter_ExportError(t *testing.T) {
 }
 
 func TestHTTPExporter_Close(t *testing.T) {
-	exporter, err := NewHTTPExporter("http://example.com", nil)
+	cfg := &config.Config{
+		HTTP: config.HTTPConfig{
+			Endpoint: "http://example.com",
+		},
+	}
+	exporter, err := NewHTTPExporter(cfg, nil)
 	if err != nil {
 		t.Fatalf("Failed to create exporter: %v", err)
 	}

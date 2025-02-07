@@ -26,7 +26,7 @@ func main() {
 		log.Fatalf("Error loading configuration: %v", err)
 	}
 
-	storage, err := exporter.NewMetricStorage(cfg.StorageDir)
+	storage, err := exporter.NewMetricStorage(cfg.HTTP.StorageDir)
 	if err != nil {
 		log.Fatalf("Error creating metric storage: %v", err)
 	}
