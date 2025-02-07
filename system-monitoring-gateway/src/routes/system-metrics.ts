@@ -4,62 +4,76 @@ import { validateRequest } from "../middleware/validate-request";
 import { validateTenantConsistency } from "../middleware/validate-tenant";
 import { metricsRegistry } from "./metrics";
 import { Counter } from "prom-client";
-import { SystemMetrics, SystemMetricsPayload } from "../payload/system-metrics";
+import {
+  SystemMetrics,
+  SystemMetricsPayload,
+  SystemMetricsData,
+} from "../payload/system-metrics";
 import { kafkaWrapper } from "../kafka/kafka-wrapper";
 
 const router = express.Router();
 
 // Validation middleware
 const validateMetrics = [
-  body("data").notEmpty().withMessage("Data is required"),
-  body("data.data.metrics").notEmpty().withMessage("Metrics data is required"),
-  body("timestamp").isISO8601().withMessage("Invalid timestamp format"),
-  // Tenant validation made optional
-  body("data.tenant").optional(),
-  body("data.tenant.id").optional(),
+  body().isObject().withMessage("Request body must be an object"),
+  body("data").isObject().withMessage("Data field is required"),
+  body("data.metrics").notEmpty().withMessage("Metrics data is required"),
+  body("data.timestamp").isISO8601().withMessage("Invalid timestamp format"),
+  body("data.tenant_id").optional(),
+  body("data.tenant_metadata").optional(),
+  body("data.host").isObject().withMessage("Host information is required"),
+  body("data.host.os").isString().withMessage("Host OS is required"),
+  body("data.host.hostname")
+    .isString()
+    .withMessage("Host hostname is required"),
+  body("data.host.cpu_cores")
+    .isInt()
+    .withMessage("Host CPU cores must be a number"),
+  body("data.processes")
+    .isObject()
+    .withMessage("Process information is required"),
+  body("data.processes.total_count")
+    .isInt()
+    .withMessage("Process total count must be a number"),
+  body("data.processes.list")
+    .isArray()
+    .withMessage("Process list must be an array"),
+  body("data.metadata").isObject().withMessage("Metadata is required"),
+  body("data.metadata.collection_duration")
+    .isString()
+    .withMessage("Collection duration is required"),
+  body("data.metadata.collector_count")
+    .isInt()
+    .withMessage("Collector count must be a number"),
 ];
 
 // "/api/v1/system",
 router.post(
-  "/gateway/api/v1/system/metrics/ingest",
+  "/system-metrics/ingest",
   validateTenantConsistency,
   validateMetrics,
   validateRequest,
-  async (req: Request<{}, {}, SystemMetricsPayload>, res: Response) => {
+  async (req: Request<{}, {}, SystemMetricsData>, res: Response) => {
+    console.log("[DEBUG] Received metrics request", {
+      headers: req.headers,
+      contentLength: req.get("content-length"),
+      tenantId: req.headers["x-tenant-id"],
+      timestamp: new Date().toISOString(),
+    });
+
     try {
-      // Handle malformed data first
-      if (req.body.data === "invalid-json-structure") {
-        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
-        await dlqProducer.publish({
-          error: "Message processing failed",
-          original_message: req.body,
-          tenant_id: req.headers["x-tenant-id"] as string,
-          timestamp: new Date().toISOString(),
-        });
+      console.log("[DEBUG] Starting metrics processing");
+
+      // Extract data from wrapper
+      const { data } = req.body;
+      if (!data) {
         return res.status(400).json({
-          errors: [{ message: "Invalid message structure" }],
+          errors: [{ message: "Missing data field in payload" }],
         });
       }
-
-      // Handle malformed messages
-      if (typeof req.body.data === "string") {
-        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
-        await dlqProducer.publish({
-          error: "Message processing failed",
-          original_message: req.body,
-          tenant_id: req.headers["x-tenant-id"] as string,
-          timestamp: new Date().toISOString(),
-        });
-        return res.status(400).json({
-          errors: [{ message: "Invalid message format" }],
-        });
-      }
-
-      const { data, timestamp } = req.body;
-      const util = require("util");
 
       // Log only process summary instead of detailed list
-      const processCount = data.data.processes?.process_list?.length || 0;
+      const processCount = data.processes?.list?.length || 0;
       console.log(`Received ${processCount} processes in metrics payload`);
 
       // Update Prometheus counter for incoming metrics
@@ -72,6 +86,7 @@ router.post(
 
       // Attempt to publish to Kafka
       if (!kafkaWrapper.isInitialized()) {
+        console.error("[ERROR] Kafka connection not established");
         return res.status(503).json({
           errors: [
             {
@@ -81,18 +96,19 @@ router.post(
           ],
         });
       }
+      console.log("[DEBUG] Kafka connection verified");
 
-      // Validate tenant ID consistency only if both header and payload tenant IDs exist
+      // Validate tenant ID consistency if header is present
       const headerTenantId = req.headers["x-tenant-id"] as string;
-      if (headerTenantId && data.tenant?.id) {
-        if (headerTenantId !== data.tenant.id) {
+      if (headerTenantId && data.tenant_id) {
+        if (headerTenantId !== data.tenant_id) {
           const errorProducer = kafkaWrapper.getProducer(
             "system-metrics-errors"
           );
           await errorProducer.publish({
             error: "Tenant ID mismatch",
             header_tenant_id: headerTenantId,
-            payload_tenant_id: data.tenant.id,
+            payload_tenant_id: data.tenant_id,
             timestamp: new Date().toISOString(),
           });
           return res.status(400).json({
@@ -103,27 +119,13 @@ router.post(
         }
       }
 
-      // Handle malformed messages first
-      if (typeof data === "string") {
-        const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
-        await dlqProducer.publish({
-          error: "Message processing failed",
-          original_message: req.body,
-          tenant_id: req.headers["x-tenant-id"] as string,
-          timestamp: new Date().toISOString(),
-        });
-        return res.status(400).json({
-          errors: [{ message: "Invalid message format" }],
-        });
-      }
-
       // Validate required fields
-      if (!data.data.metrics) {
+      if (!data.metrics) {
         const errorProducer = kafkaWrapper.getProducer("system-metrics-errors");
         await errorProducer.publish({
           error: "Validation failed",
           original_payload: req.body,
-          tenant_id: data.tenant?.id || "no-tenant",
+          tenant_id: data.tenant_id || "no-tenant",
           timestamp: new Date().toISOString(),
         });
         return res.status(400).json({
@@ -132,25 +134,24 @@ router.post(
       }
 
       try {
+        console.log("[DEBUG] Attempting to publish metrics to Kafka");
         const kafkaProducer = kafkaWrapper.getProducer("system-metrics");
-        await kafkaProducer.publish({
-          ...data,
-          timestamp,
-        });
+        await kafkaProducer.publish(data);
+        console.log("[DEBUG] Successfully published metrics to Kafka");
 
         return res.status(202).json({
           status: "accepted",
           timestamp: new Date().toISOString(),
         });
       } catch (error) {
-        console.error("Error producing metrics to Kafka:", error);
+        console.error("[ERROR] Failed to produce metrics to Kafka:", error);
 
         // Send to DLQ
         const dlqProducer = kafkaWrapper.getProducer("system-metrics-dlq");
         await dlqProducer.publish({
           error: "Message processing failed",
           original_message: req.body,
-          tenant_id: data.tenant?.id || "no-tenant",
+          tenant_id: metrics.tenant_id || "no-tenant",
           timestamp: new Date().toISOString(),
         });
 
@@ -159,7 +160,11 @@ router.post(
         });
       }
     } catch (error) {
-      console.error("Error processing metrics:", error);
+      console.error("[ERROR] Error processing metrics:", error);
+      console.error(
+        "[ERROR] Stack trace:",
+        error instanceof Error ? error.stack : "No stack trace available"
+      );
       return res.status(500).json({
         errors: [{ message: "Internal server error while processing metrics" }],
       });

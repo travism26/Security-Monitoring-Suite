@@ -96,31 +96,69 @@ func (mc *MetricsCollector) Collect() types.MetricPayload {
 		"retention_days": fmt.Sprintf("%d", mc.config.Tenant.CollectionRules.RetentionDays),
 	}
 
-	return types.MetricPayload{
-		Timestamp: now.UTC().Format(time.RFC3339),
-		Tenant: types.TenantContext{
-			ID:       mc.config.Tenant.ID,
-			Metadata: tenantMeta,
-		},
-		Data: types.MetricData{
-			HostInfo: types.HostInfo{
-				OS:        runtime.GOOS,
-				Arch:      runtime.GOARCH,
-				Hostname:  hostname(),
-				CPUCores:  runtime.NumCPU(),
-				GoVersion: runtime.Version(),
-			},
-			Metrics:          metrics,
-			ThreatIndicators: threatIndicators,
-			Processes:        processData.(types.SystemProcessStats),
-			Metadata: types.MetadataInfo{
-				CollectionDuration: time.Since(now).String(),
-				CollectorCount:     len(mc.collectors),
-				Errors:             collectionErrors,
-				TenantMetadata:     mc.tenantMeta,
-			},
-		},
+	// Initialize all required structs
+	host := struct {
+		OS        string `json:"os"`
+		Arch      string `json:"arch"`
+		Hostname  string `json:"hostname"`
+		CPUCores  int    `json:"cpu_cores"`
+		GoVersion string `json:"go_version"`
+	}{
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
+		Hostname:  hostname(),
+		CPUCores:  runtime.NumCPU(),
+		GoVersion: runtime.Version(),
 	}
+
+	processes := struct {
+		TotalCount       int                 `json:"total_count"`
+		TotalCPUPercent  float64             `json:"total_cpu_percent"`
+		TotalMemoryUsage uint64              `json:"total_memory_usage"`
+		List             []types.ProcessInfo `json:"list"`
+	}{
+		List: []types.ProcessInfo{},
+	}
+
+	// Parse process data
+	if procMap, ok := processData.(map[string]interface{}); ok {
+		if totalCount, ok := procMap["total_count"].(int); ok {
+			processes.TotalCount = totalCount
+		}
+		if totalCPU, ok := procMap["total_cpu_percent"].(float64); ok {
+			processes.TotalCPUPercent = totalCPU
+		}
+		if totalMem, ok := procMap["total_memory_usage"].(uint64); ok {
+			processes.TotalMemoryUsage = totalMem
+		}
+		if procList, ok := procMap["process_list"].([]types.ProcessInfo); ok {
+			processes.List = procList
+		}
+	}
+
+	metadata := struct {
+		CollectionDuration string   `json:"collection_duration"`
+		CollectorCount     int      `json:"collector_count"`
+		Errors             []string `json:"errors,omitempty"`
+	}{
+		CollectionDuration: time.Since(now).String(),
+		CollectorCount:     len(mc.collectors),
+		Errors:             collectionErrors,
+	}
+
+	// Create the final payload with all initialized structs
+	payload := types.MetricPayload{
+		Timestamp:        now.UTC().Format(time.RFC3339),
+		TenantID:         mc.config.Tenant.ID,
+		TenantMetadata:   tenantMeta,
+		Host:             host,
+		Metrics:          metrics,
+		Processes:        processes,
+		ThreatIndicators: threatIndicators,
+		Metadata:         metadata,
+	}
+
+	return payload
 }
 
 func hostname() string {

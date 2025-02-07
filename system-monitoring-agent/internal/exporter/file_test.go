@@ -35,11 +35,24 @@ func TestFileExporter_Export(t *testing.T) {
 
 	// Test data
 	testData := types.MetricPayload{
-		Data: types.MetricData{
-			Metrics: map[string]interface{}{
-				"cpu_usage":    75.5,
-				"memory_usage": 2048,
-			},
+		Timestamp: "2025-02-07T06:09:25Z",
+		TenantID:  "test-tenant",
+		Metrics: map[string]interface{}{
+			"cpu_usage":    75.5,
+			"memory_usage": 2048,
+		},
+		Host: struct {
+			OS        string `json:"os"`
+			Arch      string `json:"arch"`
+			Hostname  string `json:"hostname"`
+			CPUCores  int    `json:"cpu_cores"`
+			GoVersion string `json:"go_version"`
+		}{
+			OS:        "linux",
+			Arch:      "amd64",
+			Hostname:  "test-host",
+			CPUCores:  4,
+			GoVersion: "go1.21",
 		},
 	}
 
@@ -63,12 +76,18 @@ func TestFileExporter_Export(t *testing.T) {
 	}
 
 	// Verify the exported data
-	if exportedData.Data.Metrics["cpu_usage"] != testData.Data.Metrics["cpu_usage"] {
-		t.Errorf("Expected cpu value %v, got %v", testData.Data.Metrics["cpu_usage"], exportedData.Data.Metrics["cpu_usage"])
+	if exportedData.Metrics["cpu_usage"] != testData.Metrics["cpu_usage"] {
+		t.Errorf("Expected cpu value %v, got %v", testData.Metrics["cpu_usage"], exportedData.Metrics["cpu_usage"])
 	}
-	if exportedData.Data.Metrics["memory_usage"] != testData.Data.Metrics["memory_usage"] {
+	if exportedData.Metrics["memory_usage"] != testData.Metrics["memory_usage"] {
 		t.Errorf("Expected memory value %v (type: %T), got %v (type: %T)",
-			testData.Data.Metrics["memory_usage"], testData.Data.Metrics["memory_usage"],
-			exportedData.Data.Metrics["memory_usage"], exportedData.Data.Metrics["memory_usage"])
+			testData.Metrics["memory_usage"], testData.Metrics["memory_usage"],
+			exportedData.Metrics["memory_usage"], exportedData.Metrics["memory_usage"])
+	}
+	if exportedData.TenantID != testData.TenantID {
+		t.Errorf("Expected tenant ID %v, got %v", testData.TenantID, exportedData.TenantID)
+	}
+	if exportedData.Host.Hostname != testData.Host.Hostname {
+		t.Errorf("Expected hostname %v, got %v", testData.Host.Hostname, exportedData.Host.Hostname)
 	}
 }

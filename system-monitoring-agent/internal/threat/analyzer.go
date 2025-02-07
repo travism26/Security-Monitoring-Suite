@@ -34,9 +34,7 @@ func (a *Analyzer) AnalyzeMetrics(metrics map[string]interface{}) []types.Threat
 				Severity:    a.getSeverity(cpuUsage, a.thresholds["cpu_usage"]),
 				Score:       a.calculateScore(cpuUsage, a.thresholds["cpu_usage"]),
 				Timestamp:   now,
-				Metadata: types.Metadata{
-					Tags: []string{"performance", "resource_usage"},
-				},
+				Tags:        []string{"performance", "resource_usage"},
 			})
 		}
 	}
@@ -50,9 +48,7 @@ func (a *Analyzer) AnalyzeMetrics(metrics map[string]interface{}) []types.Threat
 				Severity:    a.getSeverity(memUsage, a.thresholds["memory_usage"]),
 				Score:       a.calculateScore(memUsage, a.thresholds["memory_usage"]),
 				Timestamp:   now,
-				Metadata: types.Metadata{
-					Tags: []string{"performance", "resource_usage"},
-				},
+				Tags:        []string{"performance", "resource_usage"},
 			})
 		}
 	}

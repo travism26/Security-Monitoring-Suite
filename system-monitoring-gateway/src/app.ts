@@ -55,17 +55,8 @@ app.use("/api/teams", requireAuth);
 app.use("/api/metrics", validateApiKey, validateTenantConsistency);
 
 // Apply tenant context and rate limiting to metric routes
-if (process.env.NODE_ENV !== "test") {
-  app.use(
-    "/api/v1/metrics",
-    validateApiKey,
-    // Note: Tenant validation is optional during design phase
-    validateTenantConsistency,
-    metricsRouter
-  );
-}
 app.use(
-  "/api/system-metrics",
+  "/gateway/api/v1",
   validateApiKey,
   // Note: Tenant validation is optional during design phase
   validateTenantConsistency,

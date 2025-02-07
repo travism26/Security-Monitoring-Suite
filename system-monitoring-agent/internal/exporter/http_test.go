@@ -93,11 +93,43 @@ func TestHTTPExporter_Export(t *testing.T) {
 
 	// Prepare test data
 	testData := types.MetricPayload{
-		Data: types.MetricData{
-			Metrics: map[string]interface{}{
-				"cpu_usage":    75.5,
-				"memory_usage": 2048,
-			},
+		Timestamp: "2025-02-07T06:09:25Z",
+		TenantID:  "test-tenant",
+		Metrics: map[string]interface{}{
+			"cpu_usage":    75.5,
+			"memory_usage": 2048,
+		},
+		Host: struct {
+			OS        string `json:"os"`
+			Arch      string `json:"arch"`
+			Hostname  string `json:"hostname"`
+			CPUCores  int    `json:"cpu_cores"`
+			GoVersion string `json:"go_version"`
+		}{
+			OS:        "linux",
+			Arch:      "amd64",
+			Hostname:  "test-host",
+			CPUCores:  4,
+			GoVersion: "go1.21",
+		},
+		Processes: struct {
+			TotalCount       int                 `json:"total_count"`
+			TotalCPUPercent  float64             `json:"total_cpu_percent"`
+			TotalMemoryUsage uint64              `json:"total_memory_usage"`
+			List             []types.ProcessInfo `json:"list"`
+		}{
+			TotalCount:       1,
+			TotalCPUPercent:  10.5,
+			TotalMemoryUsage: 1024,
+			List:             []types.ProcessInfo{},
+		},
+		Metadata: struct {
+			CollectionDuration string   `json:"collection_duration"`
+			CollectorCount     int      `json:"collector_count"`
+			Errors             []string `json:"errors,omitempty"`
+		}{
+			CollectionDuration: "100ms",
+			CollectorCount:     5,
 		},
 	}
 	t.Log("📤 Sending test data:", testData)
@@ -153,11 +185,24 @@ func TestHTTPExporter_ExportError(t *testing.T) {
 
 	// Create test data as MetricPayload
 	testData := types.MetricPayload{
-		Data: types.MetricData{
-			Metrics: map[string]interface{}{
-				"cpu_usage":    0,
-				"memory_usage": types.MemoryMetrics{Used: 0},
-			},
+		Timestamp: "2025-02-07T06:09:25Z",
+		TenantID:  "test-tenant",
+		Metrics: map[string]interface{}{
+			"cpu_usage":    0,
+			"memory_usage": types.MemoryMetrics{Used: 0},
+		},
+		Host: struct {
+			OS        string `json:"os"`
+			Arch      string `json:"arch"`
+			Hostname  string `json:"hostname"`
+			CPUCores  int    `json:"cpu_cores"`
+			GoVersion string `json:"go_version"`
+		}{
+			OS:        "linux",
+			Arch:      "amd64",
+			Hostname:  "test-host",
+			CPUCores:  4,
+			GoVersion: "go1.21",
 		},
 	}
 

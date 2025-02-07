@@ -1,31 +1,6 @@
 import { Event } from "../kafka/event";
 import { Topics } from "../kafka/topics";
 
-interface TenantContext {
-  id: string;
-  metadata?: { [key: string]: string };
-}
-
-interface ThreatIndicator {
-  type: string;
-  description: string;
-  severity: string;
-  score: number;
-  timestamp: string;
-  metadata: {
-    tags: string[];
-  };
-  details?: { [key: string]: any };
-}
-
-interface HostInfo {
-  os: string;
-  arch: string;
-  hostname: string;
-  cpu_cores: number;
-  go_version: string;
-}
-
 interface ProcessInfo {
   name: string;
   pid: number;
@@ -34,32 +9,49 @@ interface ProcessInfo {
   status: string;
 }
 
-interface SystemProcessStats {
-  total_count: number;
-  total_cpu_percent: number;
-  total_memory_usage: number;
-  process_list: ProcessInfo[];
+interface ThreatIndicator {
+  type: string;
+  description: string;
+  severity: string;
+  score: number;
+  timestamp: string;
+  tags: string[];
+  details?: { [key: string]: any };
 }
 
-interface MetadataInfo {
-  collection_duration: string;
-  collector_count: number;
-  errors?: string[];
+export interface MetricsPayload {
+  timestamp: string;
+  tenant_id: string;
   tenant_metadata?: { [key: string]: string };
-}
 
-interface MetricData {
-  host_info: HostInfo;
+  host: {
+    os: string;
+    arch: string;
+    hostname: string;
+    cpu_cores: number;
+    go_version: string;
+  };
+
   metrics: { [key: string]: any };
-  threat_indicators: ThreatIndicator[];
-  metadata: MetadataInfo;
-  processes: SystemProcessStats;
+
+  processes: {
+    total_count: number;
+    total_cpu_percent: number;
+    total_memory_usage: number;
+    list: ProcessInfo[];
+  };
+
+  threat_indicators?: ThreatIndicator[];
+
+  metadata: {
+    collection_duration: string;
+    collector_count: number;
+    errors?: string[];
+  };
 }
 
 export interface SystemMetricsData {
-  timestamp: string;
-  tenant: TenantContext;
-  data: MetricData;
+  data: MetricsPayload;
 }
 
 export interface SystemMetrics extends Event<SystemMetricsData> {

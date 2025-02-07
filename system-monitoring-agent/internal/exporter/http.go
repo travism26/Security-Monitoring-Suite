@@ -98,7 +98,13 @@ func (h *HTTPExporter) Export(data types.MetricPayload) error {
 }
 
 func (h *HTTPExporter) sendBatch(batch MetricBatch) error {
-	jsonData, err := json.Marshal(batch.Data)
+	// Wrap the payload in a data field
+	wrapper := struct {
+		Data types.MetricPayload `json:"data"`
+	}{
+		Data: batch.Data,
+	}
+	jsonData, err := json.Marshal(wrapper)
 	if err != nil {
 		log.Printf("[ERROR] Failed to marshal metrics data: %v", err)
 		return fmt.Errorf("failed to marshal data: %w", err)

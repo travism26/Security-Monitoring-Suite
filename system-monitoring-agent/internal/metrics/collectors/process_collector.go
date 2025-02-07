@@ -48,11 +48,11 @@ func (c *ProcessCollector) Collect() (map[string]interface{}, error) {
 	}
 
 	result := map[string]interface{}{
-		"processes": types.SystemProcessStats{
-			TotalCount:       processCount,
-			TotalCPUPercent:  totalCPU,
-			TotalMemoryUsage: totalMemory,
-			ProcessList:      processList,
+		"processes": map[string]interface{}{
+			"total_count":        processCount,
+			"total_cpu_percent":  totalCPU,
+			"total_memory_usage": totalMemory,
+			"process_list":       processList,
 		},
 	}
 

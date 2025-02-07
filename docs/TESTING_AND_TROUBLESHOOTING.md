@@ -145,6 +145,120 @@ curl -k -X PUT https://security.dev/api/v1/alerts/123/status \
 2. Check the API key format in the Authorization header
 3. Ensure the API key has the correct permissions
 
+### API Key Generation and Configuration
+
+**Symptom**: Need to generate a new API key or troubleshoot API key issues
+
+**Solution**:
+
+1. Create an admin user and set role (if needed):
+
+   ```bash
+   # Register a new user
+   curl -X POST https://security.dev/gateway/api/v1/auth/register \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "admin@security.dev",
+       "password": "yourpassword",
+       "firstName": "Admin",
+       "lastName": "User",
+       "tenantId": "your-tenant-id"
+     }' \
+     --cacert security.dev.crt \
+     --key security.dev.key
+
+   # Set admin role directly in MongoDB (if needed)
+   mongosh mongodb://localhost:30090/monitoring --eval 'db.users.updateOne(
+     {email: "admin@security.dev"},
+     {$set: {role: "admin"}}
+   )'
+   ```
+
+2. Login to get JWT token:
+
+   ```bash
+   curl -X POST https://security.dev/gateway/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{
+       "email": "admin@security.dev",
+       "password": "yourpassword"
+     }' \
+     --cacert security.dev.crt \
+     --key security.dev.key
+   ```
+
+3. Generate API key (if API routes are working):
+
+   ```bash
+   curl -X POST https://security.dev/gateway/api/v1/api-keys \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -d '{
+       "expiresInDays": 365
+     }' \
+     --cacert security.dev.crt \
+     --key security.dev.key
+   ```
+
+#### Example
+
+```bash
+curl -X POST https://security.dev/gateway/api/v1/api-keys \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY3YTVkYTA5ZDRkZDFhOWJhOGVkMDg0NSIsImVtYWlsIjoiYWRtaW5Ac2VjdXJpdHkuZGV2Iiwicm9sZSI6ImFkbWluIiwiaWF0IjoxNzM4OTIyNTc1LCJleHAiOjE3MzkwMDg5NzV9.zBV484E-lONU6L-z1jgRfEWAR3bqYSeVA8Ouu2Ivphw" \
+  -d '{
+    "expiresInDays": 365
+  }' \
+  --cacert security.dev.crt \
+  --key security.dev.key
+```
+
+4. Alternative: Create API key directly in MongoDB:
+
+   ```bash
+   mongosh mongodb://localhost:30090/monitoring --eval 'db.apikeys.insertOne({
+     key: "sms_" + Array.from({length: 48}, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+     tenantId: new ObjectId(),
+     createdAt: new Date(),
+     isActive: true,
+     permissions: ["read"],
+     expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+   })'
+   ```
+
+5. Update agent configuration:
+
+   - Edit `configs/config.yaml`
+   - Set `Tenant.APIKey` to the generated key
+   - Set `Tenant.ID` to the tenant ID
+
+6. Verify API key works:
+   ```bash
+   curl -X POST https://security.dev/gateway/api/v1/system-metrics/ingest \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: YOUR_API_KEY" \
+     -H "X-Tenant-ID: YOUR_TENANT_ID" \
+     -d '{
+       "data": {
+         "data": {
+           "metrics": {
+             "cpu": 50,
+             "memory": 60
+           }
+         }
+       },
+       "timestamp": "2025-02-07T10:04:00.000Z"
+     }' \
+     --cacert security.dev.crt \
+     --key security.dev.key
+   ```
+
+Expected responses:
+
+- 201 Created when generating new API key
+- 202 Accepted when testing metrics ingestion
+- 401 Unauthorized if API key is invalid
+
 ### Service Unavailable (503) Errors
 
 **Symptom**: Services returning 503 errors

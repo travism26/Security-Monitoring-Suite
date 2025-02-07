@@ -101,3 +101,21 @@ spec:
     - port: 8080
       targetPort: 8080
   type: ClusterIP
+
+---
+# for local testing http://localhost:30092
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-aggregator-nodeport
+  labels:
+    app: log-aggregator-nodeport
+spec:
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30092 # This is the NodePort to access Prometheus externally
+      protocol: TCP
+  type: NodePort
+  selector:
+    app: log-aggregator
