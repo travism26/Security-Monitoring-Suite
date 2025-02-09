@@ -40,8 +40,8 @@ func NewConsumer(brokers []string, groupID, topic string, logService LogService,
 }
 
 func (c *Consumer) processMessage(msg *sarama.ConsumerMessage) error {
-	// Log the raw message
-	// log.Printf("Raw message received: %s", string(msg.Value))
+	// Log the raw message for debugging
+	log.Printf("[DEBUG] Raw message received: %s", string(msg.Value))
 
 	rawMsg, err := c.unmarshalRawMessage(msg.Value)
 	if err != nil {
@@ -73,18 +73,20 @@ func (c *Consumer) processMessage(msg *sarama.ConsumerMessage) error {
 }
 
 func (c *Consumer) unmarshalRawMessage(msgValue []byte) (*struct {
-	HostInfo         interface{} `json:"host_info"`
+	Host             interface{} `json:"host"`
 	Metrics          interface{} `json:"metrics"`
 	ThreatIndicators interface{} `json:"threat_indicators"`
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
+	TenantID         string      `json:"tenant_id"`
 }, error) {
 	var rawMsg struct {
-		HostInfo         interface{} `json:"host_info"`
+		Host             interface{} `json:"host"`
 		Metrics          interface{} `json:"metrics"`
 		ThreatIndicators interface{} `json:"threat_indicators"`
 		Metadata         interface{} `json:"metadata"`
 		Processes        interface{} `json:"processes"`
+		TenantID         string      `json:"tenant_id"`
 	}
 	if err := json.Unmarshal(msgValue, &rawMsg); err != nil {
 		return nil, err
@@ -93,20 +95,29 @@ func (c *Consumer) unmarshalRawMessage(msgValue []byte) (*struct {
 }
 
 func (c *Consumer) createLogEntry(rawMsg *struct {
-	HostInfo         interface{} `json:"host_info"`
+	Host             interface{} `json:"host"`
 	Metrics          interface{} `json:"metrics"`
 	ThreatIndicators interface{} `json:"threat_indicators"`
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
+	TenantID         string      `json:"tenant_id"`
 }) (*domain.Log, error) {
-	hostInfo, ok := rawMsg.HostInfo.(map[string]interface{})
+	// Debug log for host data
+	log.Printf("[DEBUG] Host data type: %T", rawMsg.Host)
+	log.Printf("[DEBUG] Host data value: %+v", rawMsg.Host)
+
+	hostInfo, ok := rawMsg.Host.(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("invalid host_info format")
+		return nil, fmt.Errorf("invalid host format: expected map[string]interface{}, got %T", rawMsg.Host)
 	}
+
+	// Debug log for hostname field
+	log.Printf("[DEBUG] Hostname field type: %T", hostInfo["hostname"])
+	log.Printf("[DEBUG] Hostname field value: %+v", hostInfo["hostname"])
 
 	hostname, ok := hostInfo["hostname"].(string)
 	if !ok {
-		return nil, fmt.Errorf("invalid hostname format")
+		return nil, fmt.Errorf("invalid hostname format: expected string, got %T", hostInfo["hostname"])
 	}
 
 	metrics, ok := rawMsg.Metrics.(map[string]interface{})
@@ -125,11 +136,12 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	}
 
 	logEntry := &domain.Log{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Host:      hostname,
-		Message:   fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%", cpuUsage, memoryUsagePercent),
-		Level:     "INFO",
+		ID:             uuid.New().String(),
+		OrganizationID: rawMsg.TenantID,
+		Timestamp:      time.Now(),
+		Host:           hostname,
+		Message:        fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%", cpuUsage, memoryUsagePercent),
+		Level:          "INFO",
 	}
 
 	// Handle processes data if available
@@ -159,11 +171,12 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 }
 
 func (c *Consumer) extractProcesses(rawMsg *struct {
-	HostInfo         interface{} `json:"host_info"`
+	Host             interface{} `json:"host"`
 	Metrics          interface{} `json:"metrics"`
 	ThreatIndicators interface{} `json:"threat_indicators"`
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
+	TenantID         string      `json:"tenant_id"`
 }, logID string) ([]domain.Process, error) {
 	// Handle case where Processes is null
 	if rawMsg.Processes == nil {

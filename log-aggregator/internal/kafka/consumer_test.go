@@ -130,13 +130,14 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 	}{
 		{
 			name:        "Valid message with processes",
-			messageJSON: `{"host_info":{"os":"darwin","arch":"arm64","hostname":"Traviss-MacBook-Pro.local","cpu_cores":12,"go_version":"go1.23.2"},"metrics":{"cpu_usage":13.13563381573259,"disk":{"free":269959933952,"total":494384795648,"usage_percent":45.39477420656553,"used":224424861696},"memory_usage":13316669440,"memory_usage_percent":68.90063815646701,"network":{"BytesReceived":47879701332,"BytesSent":7329810320},"processes":{"process_list":[{"cpu_percent":0.22119553205535347,"memory_usage":13090816,"name":"launchd","pid":1,"status":"S"}],"total_count":1,"total_cpu_percent":0.22119553205535347,"total_memory_usage":13090816}},"threat_indicators":[{"type":"high_cpu_usage","description":"CPU usage exceeds threshold","severity":"low","score":23.635782970117063,"timestamp":"2024-12-28T08:00:11.665024-05:00","metadata":{"tags":["performance","resource_usage"]}}],"metadata":{"collection_duration":"8.466914875s","collector_count":5}}`,
+			messageJSON: `{"tenant_id":"67a5da7f9f3f88e40759e219","host":{"os":"darwin","arch":"arm64","hostname":"Traviss-MacBook-Pro.local","cpu_cores":12,"go_version":"go1.23.2"},"metrics":{"cpu_usage":13.13563381573259,"disk":{"free":269959933952,"total":494384795648,"usage_percent":45.39477420656553,"used":224424861696},"memory_usage":13316669440,"memory_usage_percent":68.90063815646701,"network":{"BytesReceived":47879701332,"BytesSent":7329810320},"processes":{"process_list":[{"cpu_percent":0.22119553205535347,"memory_usage":13090816,"name":"launchd","pid":1,"status":"S"}],"total_count":1,"total_cpu_percent":0.22119553205535347,"total_memory_usage":13090816}},"threat_indicators":[{"type":"high_cpu_usage","description":"CPU usage exceeds threshold","severity":"low","score":23.635782970117063,"timestamp":"2024-12-28T08:00:11.665024-05:00","metadata":{"tags":["performance","resource_usage"]}}],"metadata":{"collection_duration":"8.466914875s","collector_count":5}}`,
 			expectError: false,
 		},
 		{
 			name: "Valid message without processes",
-			messageJSON: ` {
-				"host_info": {
+			messageJSON: `{
+				"tenant_id": "67a5da7f9f3f88e40759e219",
+				"host": {
 					"hostname": "test-host",
 					"os": "linux"
 				},
@@ -150,8 +151,9 @@ func TestConsumer_ProcessMessage(t *testing.T) {
 		},
 		{
 			name: "Invalid message - missing required fields",
-			messageJSON: ` {
-				"host_info": {
+			messageJSON: `{
+				"tenant_id": "67a5da7f9f3f88e40759e219",
+				"host": {
 					"os": "linux"
 				},
 				"metrics": {
@@ -251,13 +253,15 @@ func TestConsumer_ExtractProcesses(t *testing.T) {
 			logID := uuid.New().String()
 
 			rawMsg := &struct {
-				HostInfo         interface{} `json:"host_info"`
+				Host             interface{} `json:"host"`
 				Metrics          interface{} `json:"metrics"`
 				ThreatIndicators interface{} `json:"threat_indicators"`
 				Metadata         interface{} `json:"metadata"`
 				Processes        interface{} `json:"processes"`
+				TenantID         string      `json:"tenant_id"`
 			}{
 				Processes: tt.processes,
+				TenantID:  "67a5da7f9f3f88e40759e219",
 			}
 
 			processes, err := consumer.extractProcesses(rawMsg, logID)
@@ -298,7 +302,8 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 		{
 			name: "Valid input with processes",
 			input: `{
-				"host_info": {"hostname": "test-host"},
+				"tenant_id": "67a5da7f9f3f88e40759e219",
+				"host": {"hostname": "test-host"},
 				"metrics": {
 					"cpu_usage": 50.5,
 					"memory_usage_percent": 75.0
@@ -312,6 +317,7 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, log *domain.Log) {
 				assert.Equal(t, "test-host", log.Host)
+				assert.Equal(t, "67a5da7f9f3f88e40759e219", log.OrganizationID)
 				assert.Equal(t, 10, log.ProcessCount)
 				assert.Equal(t, 80.5, log.TotalCPUPercent)
 				assert.Equal(t, int64(1024), log.TotalMemoryUsage)
@@ -320,7 +326,8 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 		{
 			name: "Valid input without processes",
 			input: `{
-				"host_info": {"hostname": "test-host"},
+				"tenant_id": "67a5da7f9f3f88e40759e219",
+				"host": {"hostname": "test-host"},
 				"metrics": {
 					"cpu_usage": 50.5,
 					"memory_usage_percent": 75.0
@@ -330,6 +337,7 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, log *domain.Log) {
 				assert.Equal(t, "test-host", log.Host)
+				assert.Equal(t, "67a5da7f9f3f88e40759e219", log.OrganizationID)
 				assert.Equal(t, 0, log.ProcessCount)
 				assert.Equal(t, 0.0, log.TotalCPUPercent)
 				assert.Equal(t, int64(0), log.TotalMemoryUsage)
@@ -338,7 +346,8 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 		{
 			name: "Missing hostname",
 			input: `{
-				"host_info": {},
+				"tenant_id": "67a5da7f9f3f88e40759e219",
+				"host": {},
 				"metrics": {
 					"cpu_usage": 50.5,
 					"memory_usage_percent": 75.0
@@ -353,11 +362,12 @@ func TestConsumer_CreateLogEntry(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			consumer := &Consumer{}
 			var rawMsg struct {
-				HostInfo         interface{} `json:"host_info"`
+				Host             interface{} `json:"host"`
 				Metrics          interface{} `json:"metrics"`
 				ThreatIndicators interface{} `json:"threat_indicators"`
 				Metadata         interface{} `json:"metadata"`
 				Processes        interface{} `json:"processes"`
+				TenantID         string      `json:"tenant_id"`
 			}
 
 			err := json.Unmarshal([]byte(tt.input), &rawMsg)
