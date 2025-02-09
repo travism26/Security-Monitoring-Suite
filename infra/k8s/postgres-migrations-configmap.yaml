@@ -117,13 +117,13 @@ data:
         permissions JSONB DEFAULT '{}'::jsonb
     );
 
-    -- Add tenant ID to logs table
+    -- Add tenant ID to logs table (nullable for optional multi-tenancy)
     ALTER TABLE logs 
-    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NULL;
 
-    -- Add tenant ID to alerts table
+    -- Add tenant ID to alerts table (nullable for optional multi-tenancy)
     ALTER TABLE alerts
-    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
+    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NULL;
 
     -- Add indexes for tenant-based queries
     CREATE INDEX idx_logs_org_id ON logs(organization_id);
@@ -148,3 +148,13 @@ data:
         BEFORE UPDATE ON organizations
         FOR EACH ROW
         EXECUTE FUNCTION update_updated_at_column();
+
+  007_add_api_key_column.sql: |
+    -- Add API key tracking to logs table
+
+    -- Add api_key column to logs table
+    ALTER TABLE logs
+    ADD COLUMN api_key VARCHAR(255);
+
+    -- Create index for efficient querying by API key
+    CREATE INDEX idx_logs_api_key ON logs(api_key);
