@@ -63,25 +63,28 @@ func (m *MockLogRepository) ListByLevel(orgID string, level string, limit, offse
 	return args.Get(0).([]*domain.Log), args.Error(1)
 }
 
-/* mtravis notes: missing methods I need to add to mock repo
-// CountByTimeRange returns the total number of logs within a time range for an organization
-	CountByTimeRange(orgID string, start, end time.Time) (int64, error)
+func (m *MockLogRepository) ListByAPIKey(apiKey string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(apiKey, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
 
-	// ListByHost retrieves logs for a specific host within an organization
-	ListByHost(orgID string, host string, limit, offset int) ([]*Log, error)
-
-	// ListByLevel retrieves logs of a specific level within an organization
-	ListByLevel(orgID string, level string, limit, offset int) ([]*Log, error)
-*/
+func (m *MockLogRepository) CountByAPIKey(apiKey string) (int64, error) {
+	args := m.Called(apiKey)
+	return args.Get(0).(int64), args.Error(1)
+}
 
 func setupTest() (*gin.Engine, *MockLogRepository) {
 	gin.SetMode(gin.TestMode)
 	r := gin.New()
 	mockRepo := new(MockLogRepository)
 	logService := service.NewLogService(mockRepo, service.LogServiceConfig{
-		Environment: "test",
-		Application: "log-aggregator",
-		Component:   "api",
+		Environment:         "test",
+		Application:         "log-aggregator",
+		Component:           "api",
+		MultiTenancyEnabled: false,
 	})
 	handler := NewLogHandler(logService)
 	RegisterRoutes(r, handler)

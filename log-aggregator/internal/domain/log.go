@@ -17,6 +17,9 @@ type Log struct {
 	// Unique identifier for the log entry
 	ID string `json:"id"`
 
+	// API key used to send this log
+	APIKey string `json:"api_key"`
+
 	// Organization that owns this log entry
 	OrganizationID string `json:"organization_id"`
 
@@ -113,4 +116,10 @@ type LogRepository interface {
 
 	// ListByLevel retrieves logs of a specific level within an organization
 	ListByLevel(orgID string, level string, limit, offset int) ([]*Log, error)
+
+	// ListByAPIKey retrieves logs for a specific API key
+	ListByAPIKey(apiKey string, limit, offset int) ([]*Log, error)
+
+	// CountByAPIKey returns the total number of logs for a specific API key
+	CountByAPIKey(apiKey string) (int64, error)
 }

@@ -42,6 +42,10 @@ metrics:
   enabled: true
   path: "/metrics"
 
+features:
+  multi_tenancy:
+    enabled: false
+
 cache:
   enabled: true
   ttl: 5 # Cache TTL in minutes for regular queries

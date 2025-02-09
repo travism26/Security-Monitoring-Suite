@@ -15,11 +15,12 @@ const (
 )
 
 type LogServiceConfig struct {
-	OrganizationID string
-	Environment    string
-	Application    string
-	Component      string
-	Cache          struct {
+	OrganizationID      string
+	Environment         string
+	Application         string
+	Component           string
+	MultiTenancyEnabled bool
+	Cache               struct {
 		Enabled      bool
 		TTL          time.Duration
 		TimeRangeTTL time.Duration
@@ -62,8 +63,13 @@ func (s *LogService) retryOperation(operation func() error) error {
 }
 
 func (s *LogService) StoreLog(log *domain.Log) error {
-	// Set organization ID from config
-	log.OrganizationID = s.config.OrganizationID
+	fmt.Printf("[DEBUG] Storing log with ID: %s\n", log.ID)
+	fmt.Printf("[DEBUG] Raw log data: %+v\n", log)
+
+	// Clear organization ID if multi-tenancy is disabled
+	if !s.config.MultiTenancyEnabled {
+		log.OrganizationID = ""
+	}
 
 	// Enrich log with environment information
 	log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
@@ -78,7 +84,12 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 	}
 
 	err := s.retryOperation(func() error {
-		return s.repo.Store(log)
+		fmt.Printf("[DEBUG] Attempting to store log with enriched data: %+v\n", log)
+		if err := s.repo.Store(log); err != nil {
+			fmt.Printf("[ERROR] Failed to store log: %v\n", err)
+			return err
+		}
+		return nil
 	})
 
 	// If store was successful and cache is enabled, invalidate related cache entries
@@ -94,8 +105,10 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	// Process metadata and enrich each log in the batch
 	for _, log := range logs {
-		// Set organization ID from config
-		log.OrganizationID = s.config.OrganizationID
+		// Clear organization ID if multi-tenancy is disabled
+		if !s.config.MultiTenancyEnabled {
+			log.OrganizationID = ""
+		}
 
 		// Enrich log with environment information
 		log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
@@ -141,7 +154,11 @@ func (s *LogService) GetLog(id string) (*domain.Log, error) {
 	var log *domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		log, err = s.repo.FindByID(s.config.OrganizationID, id)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		log, err = s.repo.FindByID(orgID, id)
 		if err != nil {
 			return err
 		}
@@ -170,7 +187,11 @@ func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.List(s.config.OrganizationID, limit, offset)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		logs, err = s.repo.List(orgID, limit, offset)
 		if err != nil {
 			return err
 		}
@@ -204,7 +225,11 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.ListByTimeRange(s.config.OrganizationID, start, end, limit, offset)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		logs, err = s.repo.ListByTimeRange(orgID, start, end, limit, offset)
 		if err != nil {
 			return err
 		}
@@ -236,7 +261,11 @@ func (s *LogService) CountByTimeRange(start, end time.Time) (int64, error) {
 	var count int64
 	err := s.retryOperation(func() error {
 		var err error
-		count, err = s.repo.CountByTimeRange(s.config.OrganizationID, start, end)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		count, err = s.repo.CountByTimeRange(orgID, start, end)
 		if err != nil {
 			return err
 		}
@@ -263,7 +292,11 @@ func (s *LogService) ListByHost(host string, limit, offset int) ([]*domain.Log, 
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.ListByHost(s.config.OrganizationID, host, limit, offset)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		logs, err = s.repo.ListByHost(orgID, host, limit, offset)
 		if err != nil {
 			return err
 		}
@@ -290,7 +323,11 @@ func (s *LogService) ListByLevel(level string, limit, offset int) ([]*domain.Log
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		logs, err = s.repo.ListByLevel(s.config.OrganizationID, level, limit, offset)
+		orgID := ""
+		if s.config.MultiTenancyEnabled {
+			orgID = s.config.OrganizationID
+		}
+		logs, err = s.repo.ListByLevel(orgID, level, limit, offset)
 		if err != nil {
 			return err
 		}

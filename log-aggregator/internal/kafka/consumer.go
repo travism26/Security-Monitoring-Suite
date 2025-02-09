@@ -79,6 +79,7 @@ func (c *Consumer) unmarshalRawMessage(msgValue []byte) (*struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 	TenantID         string      `json:"tenant_id"`
+	APIKey           string      `json:"api_key"`
 }, error) {
 	var rawMsg struct {
 		Host             interface{} `json:"host"`
@@ -87,6 +88,7 @@ func (c *Consumer) unmarshalRawMessage(msgValue []byte) (*struct {
 		Metadata         interface{} `json:"metadata"`
 		Processes        interface{} `json:"processes"`
 		TenantID         string      `json:"tenant_id"`
+		APIKey           string      `json:"api_key"`
 	}
 	if err := json.Unmarshal(msgValue, &rawMsg); err != nil {
 		return nil, err
@@ -101,6 +103,7 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 	TenantID         string      `json:"tenant_id"`
+	APIKey           string      `json:"api_key"`
 }) (*domain.Log, error) {
 	// Debug log for host data
 	log.Printf("[DEBUG] Host data type: %T", rawMsg.Host)
@@ -135,9 +138,16 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 		return nil, fmt.Errorf("invalid memory_usage_percent format")
 	}
 
+	tenantID := rawMsg.TenantID
+	if tenantID == "" {
+		// Set a default UUID for the default tenant
+		tenantID = "00000000-0000-4000-a000-000000000000"
+	}
+
 	logEntry := &domain.Log{
 		ID:             uuid.New().String(),
-		OrganizationID: rawMsg.TenantID,
+		OrganizationID: tenantID,
+		APIKey:         rawMsg.APIKey,
 		Timestamp:      time.Now(),
 		Host:           hostname,
 		Message:        fmt.Sprintf("CPU Usage: %.2f%%, Memory Usage: %.2f%%", cpuUsage, memoryUsagePercent),
@@ -177,6 +187,7 @@ func (c *Consumer) extractProcesses(rawMsg *struct {
 	Metadata         interface{} `json:"metadata"`
 	Processes        interface{} `json:"processes"`
 	TenantID         string      `json:"tenant_id"`
+	APIKey           string      `json:"api_key"`
 }, logID string) ([]domain.Process, error) {
 	// Handle case where Processes is null
 	if rawMsg.Processes == nil {

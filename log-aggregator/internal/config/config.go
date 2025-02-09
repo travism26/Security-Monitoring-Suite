@@ -15,6 +15,11 @@ type Config struct {
 		Port string `mapstructure:"port"`
 		Host string `mapstructure:"host"`
 	}
+	Features struct {
+		MultiTenancy struct {
+			Enabled bool `mapstructure:"enabled"`
+		} `mapstructure:"multi_tenancy"`
+	} `mapstructure:"features"`
 	Organization struct {
 		ID   string `mapstructure:"id"`
 		Name string `mapstructure:"name"`
@@ -74,8 +79,9 @@ func LoadConfig() (*Config, error) {
 	viper.SetDefault("logservice.environment", "production")
 	viper.SetDefault("logservice.application", "log-aggregator")
 	viper.SetDefault("logservice.component", "log-service")
-	viper.SetDefault("organization.id", "default")
+	viper.SetDefault("organization.id", "123e4567-e89b-12d3-a456-426614174000") // valid uuid
 	viper.SetDefault("organization.name", "Default Organization")
+	viper.SetDefault("features.multi_tenancy.enabled", false)
 
 	// Map environment variables
 	viper.SetEnvPrefix("LOG_AGG") // prefix for environment variables
@@ -107,6 +113,7 @@ func LoadConfig() (*Config, error) {
 	viper.BindEnv("logservice.component", "LOG_AGG_COMPONENT")
 	viper.BindEnv("organization.id", "LOG_AGG_ORG_ID")
 	viper.BindEnv("organization.name", "LOG_AGG_ORG_NAME")
+	viper.BindEnv("features.multi_tenancy.enabled", "LOG_AGG_MULTI_TENANCY_ENABLED")
 
 	// Read config file
 	if err := viper.ReadInConfig(); err != nil {

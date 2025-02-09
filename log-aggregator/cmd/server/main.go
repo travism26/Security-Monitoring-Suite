@@ -75,10 +75,11 @@ func main() {
 
 	// Initialize services
 	logService := service.NewLogService(logRepo, service.LogServiceConfig{
-		OrganizationID: cfg.Organization.ID,
-		Environment:    cfg.LogService.Environment,
-		Application:    cfg.LogService.Application,
-		Component:      cfg.LogService.Component,
+		OrganizationID:      cfg.Organization.ID,
+		Environment:         cfg.LogService.Environment,
+		Application:         cfg.LogService.Application,
+		Component:           cfg.LogService.Component,
+		MultiTenancyEnabled: cfg.Features.MultiTenancy.Enabled,
 		Cache: struct {
 			Enabled      bool
 			TTL          time.Duration

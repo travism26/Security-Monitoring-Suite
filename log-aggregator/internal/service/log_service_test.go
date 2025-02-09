@@ -71,13 +71,27 @@ func (m *MockLogRepository) ListByLevel(orgID string, level string, limit, offse
 	return args.Get(0).([]*domain.Log), args.Error(1)
 }
 
+func (m *MockLogRepository) ListByAPIKey(apiKey string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(apiKey, limit, offset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]*domain.Log), args.Error(1)
+}
+
+func (m *MockLogRepository) CountByAPIKey(apiKey string) (int64, error) {
+	args := m.Called(apiKey)
+	return args.Get(0).(int64), args.Error(1)
+}
+
 // getTestConfig returns a standard test configuration
 func getTestConfig() LogServiceConfig {
 	return LogServiceConfig{
-		OrganizationID: "test-org",
-		Environment:    "test",
-		Application:    "log-aggregator",
-		Component:      "test-component",
+		OrganizationID:      "test-org",
+		Environment:         "test",
+		Application:         "log-aggregator",
+		Component:           "test-component",
+		MultiTenancyEnabled: false,
 	}
 }
 
