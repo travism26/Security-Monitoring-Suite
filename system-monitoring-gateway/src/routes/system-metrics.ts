@@ -21,6 +21,10 @@ const validateMetrics = [
   body("data.timestamp").isISO8601().withMessage("Invalid timestamp format"),
   body("data.tenant_id").optional(),
   body("data.tenant_metadata").optional(),
+  body("data.api_key")
+    .optional()
+    .isString()
+    .withMessage("API key must be a string"),
   body("data.host").isObject().withMessage("Host information is required"),
   body("data.host.os").isString().withMessage("Host OS is required"),
   body("data.host.hostname")
@@ -57,20 +61,26 @@ router.post(
     console.log("[DEBUG] Received metrics request", {
       headers: req.headers,
       contentLength: req.get("content-length"),
-      tenantId: req.headers["x-tenant-id"],
+      tenantId: req.get("x-tenant-id"),
       timestamp: new Date().toISOString(),
+      apiKey: req.get("x-api-key"),
     });
 
     try {
       console.log("[DEBUG] Starting metrics processing");
 
-      // Extract data from wrapper
+      // Extract data from wrapper and add API key
       const { data } = req.body;
       if (!data) {
         return res.status(400).json({
           errors: [{ message: "Missing data field in payload" }],
         });
       }
+
+      // Add API key to the data payload
+      // We can safely assert this is a string since validateApiKey middleware ensures it exists
+      const apiKey = req.get("x-api-key") as string;
+      data.api_key = apiKey;
 
       // Log only process summary instead of detailed list
       const processCount = data.processes?.list?.length || 0;
@@ -99,7 +109,7 @@ router.post(
       console.log("[DEBUG] Kafka connection verified");
 
       // Validate tenant ID consistency if header is present
-      const headerTenantId = req.headers["x-tenant-id"] as string;
+      const headerTenantId = req.get("x-tenant-id");
       if (headerTenantId && data.tenant_id) {
         if (headerTenantId !== data.tenant_id) {
           const errorProducer = kafkaWrapper.getProducer(
@@ -136,6 +146,7 @@ router.post(
       try {
         console.log("[DEBUG] Attempting to publish metrics to Kafka");
         const kafkaProducer = kafkaWrapper.getProducer("system-metrics");
+
         await kafkaProducer.publish(data);
         console.log("[DEBUG] Successfully published metrics to Kafka");
 

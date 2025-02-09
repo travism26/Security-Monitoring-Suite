@@ -22,6 +22,7 @@ interface ThreatIndicator {
 export interface MetricsPayload {
   timestamp: string;
   tenant_id: string;
+  api_key: string;
   tenant_metadata?: { [key: string]: string };
 
   host: {

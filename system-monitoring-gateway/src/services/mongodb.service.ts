@@ -108,10 +108,11 @@ export class MongoDBService {
 
   // Helper Methods
   private generateApiKey(): string {
-    // Generate a random 32-character hexadecimal string
-    return Array.from({ length: 32 }, () =>
+    // Generate a random 32-character hexadecimal string with sms_ prefix
+    const randomHex = Array.from({ length: 32 }, () =>
       Math.floor(Math.random() * 16).toString(16)
     ).join("");
+    return `sms_${randomHex}`;
   }
 
   // User Operations

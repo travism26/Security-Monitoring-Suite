@@ -7,7 +7,8 @@ export const validateApiKey = async (
   res: Response,
   next: NextFunction
 ) => {
-  const apiKey = req.header("X-API-Key");
+  // Case-insensitive header check
+  const apiKey = req.header("X-API-Key") || req.header("X-Api-Key");
 
   if (!apiKey) {
     throw new NotAuthorizedError("API key is required");
