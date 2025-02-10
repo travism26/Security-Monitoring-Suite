@@ -9,37 +9,63 @@ import (
 )
 
 type AlertRepository struct {
-	db *sql.DB
+	db                  *sql.DB
+	multiTenancyEnabled bool
 }
 
-func NewAlertRepository(db *sql.DB) *AlertRepository {
+func NewAlertRepository(db *sql.DB, multiTenancyEnabled bool) *AlertRepository {
 	return &AlertRepository{
-		db: db,
+		db:                  db,
+		multiTenancyEnabled: multiTenancyEnabled,
 	}
 }
 
 func (r *AlertRepository) Store(alert *domain.Alert) error {
-	query := `
-		INSERT INTO alerts (
-			id, organization_id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
-		)`
+	var query string
+	var args []interface{}
 
-	_, err := r.db.Exec(
-		query,
-		alert.ID,
-		alert.OrganizationID,
-		alert.Title,
-		alert.Description,
-		alert.Severity,
-		alert.Status,
-		alert.Source,
-		alert.CreatedAt,
-		alert.UpdatedAt,
-		alert.ResolvedAt,
-	)
+	if r.multiTenancyEnabled {
+		query = `
+			INSERT INTO alerts (
+				id, organization_id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			) VALUES (
+				$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+			)`
+		args = []interface{}{
+			alert.ID,
+			alert.OrganizationID,
+			alert.Title,
+			alert.Description,
+			alert.Severity,
+			alert.Status,
+			alert.Source,
+			alert.CreatedAt,
+			alert.UpdatedAt,
+			alert.ResolvedAt,
+		}
+	} else {
+		query = `
+			INSERT INTO alerts (
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			) VALUES (
+				$1, $2, $3, $4, $5, $6, $7, $8, $9
+			)`
+		args = []interface{}{
+			alert.ID,
+			alert.Title,
+			alert.Description,
+			alert.Severity,
+			alert.Status,
+			alert.Source,
+			alert.CreatedAt,
+			alert.UpdatedAt,
+			alert.ResolvedAt,
+		}
+	}
+
+	_, err := r.db.Exec(query, args...)
 
 	if err != nil {
 		return fmt.Errorf("failed to store alert: %w", err)
@@ -90,15 +116,29 @@ func (r *AlertRepository) storeAlertMetadata(alertID string, metadata map[string
 }
 
 func (r *AlertRepository) FindByID(orgID, id string) (*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1 AND id = $2`
+	var query string
+	var args []interface{}
+
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1 AND id = $2`
+		args = []interface{}{orgID, id}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE id = $1`
+		args = []interface{}{id}
+	}
 
 	alert := &domain.Alert{}
-	err := r.db.QueryRow(query, orgID, id).Scan(
+	err := r.db.QueryRow(query, args...).Scan(
 		&alert.ID,
 		&alert.Title,
 		&alert.Description,
@@ -181,16 +221,31 @@ func (r *AlertRepository) getAlertMetadata(alertID string) (map[string]interface
 }
 
 func (r *AlertRepository) List(orgID string, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1
-		ORDER BY created_at DESC
-		LIMIT $2 OFFSET $3`
+	var query string
+	var args []interface{}
 
-	rows, err := r.db.Query(query, orgID, limit, offset)
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3`
+		args = []interface{}{orgID, limit, offset}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			ORDER BY created_at DESC
+			LIMIT $1 OFFSET $2`
+		args = []interface{}{limit, offset}
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list alerts: %w", err)
 	}
@@ -274,16 +329,32 @@ func (r *AlertRepository) Update(alert *domain.Alert) error {
 }
 
 func (r *AlertRepository) FindByStatus(orgID string, status domain.AlertStatus, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1 AND status = $2
-		ORDER BY created_at DESC
-		LIMIT $3 OFFSET $4`
+	var query string
+	var args []interface{}
 
-	rows, err := r.db.Query(query, orgID, status, limit, offset)
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1 AND status = $2
+			ORDER BY created_at DESC
+			LIMIT $3 OFFSET $4`
+		args = []interface{}{orgID, status, limit, offset}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE status = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3`
+		args = []interface{}{status, limit, offset}
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find alerts by status: %w", err)
 	}
@@ -293,16 +364,32 @@ func (r *AlertRepository) FindByStatus(orgID string, status domain.AlertStatus, 
 }
 
 func (r *AlertRepository) FindBySeverity(orgID string, severity domain.AlertSeverity, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1 AND severity = $2
-		ORDER BY created_at DESC
-		LIMIT $3 OFFSET $4`
+	var query string
+	var args []interface{}
 
-	rows, err := r.db.Query(query, orgID, severity, limit, offset)
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1 AND severity = $2
+			ORDER BY created_at DESC
+			LIMIT $3 OFFSET $4`
+		args = []interface{}{orgID, severity, limit, offset}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE severity = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3`
+		args = []interface{}{severity, limit, offset}
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find alerts by severity: %w", err)
 	}
@@ -312,13 +399,25 @@ func (r *AlertRepository) FindBySeverity(orgID string, severity domain.AlertSeve
 }
 
 func (r *AlertRepository) CountBySeverity(orgID string, severity domain.AlertSeverity) (int64, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM alerts
-		WHERE organization_id = $1 AND severity = $2`
+	var query string
+	var args []interface{}
+
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE organization_id = $1 AND severity = $2`
+		args = []interface{}{orgID, severity}
+	} else {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE severity = $1`
+		args = []interface{}{severity}
+	}
 
 	var count int64
-	err := r.db.QueryRow(query, orgID, severity).Scan(&count)
+	err := r.db.QueryRow(query, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count alerts by severity: %w", err)
 	}
@@ -326,13 +425,25 @@ func (r *AlertRepository) CountBySeverity(orgID string, severity domain.AlertSev
 }
 
 func (r *AlertRepository) CountByStatus(orgID string, status domain.AlertStatus) (int64, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM alerts
-		WHERE organization_id = $1 AND status = $2`
+	var query string
+	var args []interface{}
+
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE organization_id = $1 AND status = $2`
+		args = []interface{}{orgID, status}
+	} else {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE status = $1`
+		args = []interface{}{status}
+	}
 
 	var count int64
-	err := r.db.QueryRow(query, orgID, status).Scan(&count)
+	err := r.db.QueryRow(query, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count alerts by status: %w", err)
 	}
@@ -340,13 +451,25 @@ func (r *AlertRepository) CountByStatus(orgID string, status domain.AlertStatus)
 }
 
 func (r *AlertRepository) CountByTimeRange(orgID string, start, end time.Time) (int64, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM alerts
-		WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3`
+	var query string
+	var args []interface{}
+
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3`
+		args = []interface{}{orgID, start, end}
+	} else {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE created_at >= $1 AND created_at <= $2`
+		args = []interface{}{start, end}
+	}
 
 	var count int64
-	err := r.db.QueryRow(query, orgID, start, end).Scan(&count)
+	err := r.db.QueryRow(query, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count alerts by time range: %w", err)
 	}
@@ -354,13 +477,25 @@ func (r *AlertRepository) CountByTimeRange(orgID string, start, end time.Time) (
 }
 
 func (r *AlertRepository) CountBySource(orgID string, source string) (int64, error) {
-	query := `
-		SELECT COUNT(*)
-		FROM alerts
-		WHERE organization_id = $1 AND source = $2`
+	var query string
+	var args []interface{}
+
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE organization_id = $1 AND source = $2`
+		args = []interface{}{orgID, source}
+	} else {
+		query = `
+			SELECT COUNT(*)
+			FROM alerts
+			WHERE source = $1`
+		args = []interface{}{source}
+	}
 
 	var count int64
-	err := r.db.QueryRow(query, orgID, source).Scan(&count)
+	err := r.db.QueryRow(query, args...).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to count alerts by source: %w", err)
 	}
@@ -388,7 +523,12 @@ func (r *AlertRepository) Delete(orgID, id string) error {
 	}
 
 	// Delete the alert
-	result, err := tx.Exec(`DELETE FROM alerts WHERE organization_id = $1 AND id = $2`, orgID, id)
+	var result sql.Result
+	if r.multiTenancyEnabled {
+		result, err = tx.Exec(`DELETE FROM alerts WHERE organization_id = $1 AND id = $2`, orgID, id)
+	} else {
+		result, err = tx.Exec(`DELETE FROM alerts WHERE id = $1`, id)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to delete alert: %w", err)
 	}
@@ -411,16 +551,32 @@ func (r *AlertRepository) Delete(orgID, id string) error {
 }
 
 func (r *AlertRepository) FindBySource(orgID string, source string, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1 AND source = $2
-		ORDER BY created_at DESC
-		LIMIT $3 OFFSET $4`
+	var query string
+	var args []interface{}
 
-	rows, err := r.db.Query(query, orgID, source, limit, offset)
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1 AND source = $2
+			ORDER BY created_at DESC
+			LIMIT $3 OFFSET $4`
+		args = []interface{}{orgID, source, limit, offset}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE source = $1
+			ORDER BY created_at DESC
+			LIMIT $2 OFFSET $3`
+		args = []interface{}{source, limit, offset}
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find alerts by source: %w", err)
 	}
@@ -463,16 +619,32 @@ func (r *AlertRepository) FindBySource(orgID string, source string, limit, offse
 }
 
 func (r *AlertRepository) ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*domain.Alert, error) {
-	query := `
-		SELECT 
-			id, title, description, severity, status,
-			source, created_at, updated_at, resolved_at
-		FROM alerts
-		WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3
-		ORDER BY created_at DESC
-		LIMIT $4 OFFSET $5`
+	var query string
+	var args []interface{}
 
-	rows, err := r.db.Query(query, orgID, start, end, limit, offset)
+	if r.multiTenancyEnabled {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE organization_id = $1 AND created_at >= $2 AND created_at <= $3
+			ORDER BY created_at DESC
+			LIMIT $4 OFFSET $5`
+		args = []interface{}{orgID, start, end, limit, offset}
+	} else {
+		query = `
+			SELECT 
+				id, title, description, severity, status,
+				source, created_at, updated_at, resolved_at
+			FROM alerts
+			WHERE created_at >= $1 AND created_at <= $2
+			ORDER BY created_at DESC
+			LIMIT $3 OFFSET $4`
+		args = []interface{}{start, end, limit, offset}
+	}
+
+	rows, err := r.db.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to list alerts by time range: %w", err)
 	}

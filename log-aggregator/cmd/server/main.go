@@ -69,7 +69,7 @@ func main() {
 	logRepo := postgres.NewLogRepository(db)
 	logRepo.SetBatchSize(cfg.Database.BatchSize)
 	processRepo := postgres.NewProcessRepository(db)
-	alertRepo := postgres.NewAlertRepository(db)
+	alertRepo := postgres.NewAlertRepository(db, cfg.Features.MultiTenancy.Enabled)
 
 	log.Printf("Log repository configured with batch size: %d", cfg.Database.BatchSize)
 
