@@ -12,17 +12,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "@/components/ui/use-toast"
 
 interface ApiKey {
-  id: string
-  name: string
-  key: string
-  createdAt: string
+  key: string;
+  description: string;
+  permissions: string[];
+  createdAt: Date;
+  expiresAt?: Date;
+  isActive: boolean;
 }
 
 export default function ApiKeysPage() {
-  const { user } = useAuth()
+  const { user } = useAuth() as { user: { id: string } | null }
   const router = useRouter()
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-  const [newKeyName, setNewKeyName] = useState('')
+  const [newKeyDescription, setNewKeyDescription] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!user) {
@@ -34,16 +37,22 @@ export default function ApiKeysPage() {
   }, [user, router])
 
   const fetchApiKeys = async () => {
-    // In a real application, you would fetch this from your backend
-    const mockApiKeys: ApiKey[] = [
-      { id: '1', name: 'Production Server', key: 'prod_abcdefghijklmnop', createdAt: '2023-06-15T10:00:00Z' },
-      { id: '2', name: 'Development Server', key: 'dev_qrstuvwxyz123456', createdAt: '2023-06-16T11:30:00Z' },
-    ]
-    setApiKeys(mockApiKeys)
+    try {
+      const response = await fetch(`/gateway/api/v1/users/${user?.id}/api-keys`);
+      if (!response.ok) throw new Error('Failed to fetch API keys');
+      const data = await response.json();
+      setApiKeys(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load API keys",
+        variant: "destructive",
+      });
+    }
   }
 
   const createNewApiKey = async () => {
-    if (!newKeyName.trim()) {
+    if (!newKeyDescription.trim()) {
       toast({
         title: "Error",
         description: "Please enter a name for the new API key.",
@@ -52,31 +61,82 @@ export default function ApiKeysPage() {
       return
     }
 
-    // In a real application, you would call your backend to create a new API key
-    const newKey: ApiKey = {
-      id: String(apiKeys.length + 1),
-      name: newKeyName,
-      key: `new_${Math.random().toString(36).substr(2, 16)}`,
-      createdAt: new Date().toISOString(),
+    setLoading(true);
+    try {
+      const response = await fetch(`/gateway/api/v1/users/${user?.id}/api-keys`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          description: newKeyDescription.trim(),
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create API key');
+
+      const newKey = await response.json();
+      setApiKeys([...apiKeys, newKey]);
+      setNewKeyDescription('');
+      toast({
+        title: "Success",
+        description: "New API key created successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create API key",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
-
-    setApiKeys([...apiKeys, newKey])
-    setNewKeyName('')
-    toast({
-      title: "Success",
-      description: "New API key created successfully.",
-    })
   }
 
-  const deleteApiKey = async (id: string) => {
-    // In a real application, you would call your backend to delete the API key
-    setApiKeys(apiKeys.filter(key => key.id !== id))
-    toast({
-      title: "Success",
-      description: "API key deleted successfully.",
-    })
+  const revokeApiKey = async (keyId: string) => {
+    try {
+      const response = await fetch(
+        `/gateway/api/v1/users/${user?.id}/api-keys/${keyId}/revoke`,
+        {
+          method: 'PUT',
+        }
+      );
+
+      if (!response.ok) throw new Error('Failed to revoke API key');
+
+      // Update the local state to reflect the change
+      setApiKeys(apiKeys.map(key => 
+        key.key === keyId ? { ...key, isActive: false } : key
+      ));
+
+      toast({
+        title: "Success",
+        description: "API key revoked successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke API key",
+        variant: "destructive",
+      });
+    }
   }
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Success",
+        description: "API key copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy API key",
+        variant: "destructive",
+      });
+    }
+  }
   if (!user) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
@@ -98,9 +158,9 @@ export default function ApiKeysPage() {
               <CardContent>
                 <div className="flex space-x-2">
                   <Input
-                    placeholder="Enter API key name"
-                    value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
+                    placeholder="Enter API key description"
+                    value={newKeyDescription}
+                    onChange={(e) => setNewKeyDescription(e.target.value)}
                   />
                   <Button onClick={createNewApiKey}>Create Key</Button>
                 </div>
@@ -115,20 +175,57 @@ export default function ApiKeysPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
+                      <TableHead>Description</TableHead>
                       <TableHead>Key</TableHead>
-                      <TableHead>Created At</TableHead>
-                      <TableHead>Action</TableHead>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Expires</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {apiKeys.map((apiKey) => (
-                      <TableRow key={apiKey.id}>
-                        <TableCell>{apiKey.name}</TableCell>
-                        <TableCell>{apiKey.key}</TableCell>
-                        <TableCell>{new Date(apiKey.createdAt).toLocaleString()}</TableCell>
+                      <TableRow key={apiKey.key}>
+                        <TableCell>{apiKey.description}</TableCell>
                         <TableCell>
-                          <Button variant="destructive" onClick={() => deleteApiKey(apiKey.id)}>Delete</Button>
+                          <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm">
+                            {apiKey.key.substring(0, 10)}...
+                          </code>
+                        </TableCell>
+                        <TableCell>{new Date(apiKey.createdAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {apiKey.expiresAt ? new Date(apiKey.expiresAt).toLocaleDateString() : "Never"}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              apiKey.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {apiKey.isActive ? "Active" : "Revoked"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(apiKey.key)}
+                            >
+                              Copy
+                            </Button>
+                            {apiKey.isActive && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => revokeApiKey(apiKey.key)}
+                              >
+                                Revoke
+                              </Button>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
