@@ -5,7 +5,7 @@ Tenant:
   # API key for authentication (optional)
   # Note: API key is NOT OPTIONAL - it is required for authentication
   # Create this in the https://security.dev/api-keys/
-  APIKey: "sms_36d8605280bed12dc11908aac66a34e5"
+  APIKey: "PUT_YOUR_API_KEY_HERE"
   # Tenant organization name
   Name: "Development Standard"
   # Environment (e.g., production, staging, development)
