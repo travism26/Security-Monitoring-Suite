@@ -54,16 +54,16 @@ const validateMetrics = [
 // "/api/v1/system",
 router.post(
   "/system-metrics/ingest",
-  validateTenantConsistency,
   validateMetrics,
   validateRequest,
+  validateTenantConsistency,
   async (req: Request<{}, {}, SystemMetricsData>, res: Response) => {
     console.log("[DEBUG] Received metrics request", {
       headers: req.headers,
       contentLength: req.get("content-length"),
       tenantId: req.get("x-tenant-id"),
       timestamp: new Date().toISOString(),
-      apiKey: req.get("x-api-key"),
+      apiKey: req.apiKey,
     });
 
     try {
@@ -77,10 +77,11 @@ router.post(
         });
       }
 
-      // Add API key to the data payload
-      // We can safely assert this is a string since validateApiKey middleware ensures it exists
-      const apiKey = req.get("x-api-key") as string;
-      data.api_key = apiKey;
+      // Add API key to the data payload from middleware
+      if (!req.apiKey) {
+        throw new Error("API key not found in request");
+      }
+      data.api_key = req.apiKey;
 
       // Log only process summary instead of detailed list
       const processCount = data.processes?.list?.length || 0;

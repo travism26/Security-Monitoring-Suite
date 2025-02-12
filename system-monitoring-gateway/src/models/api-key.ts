@@ -4,7 +4,9 @@ import { TenantDoc } from "./tenant";
 // Interface representing an API Key document
 interface ApiKeyDoc extends mongoose.Document {
   key: string;
-  tenantId: TenantDoc["_id"];
+  tenantId?: TenantDoc["_id"];
+  userId: mongoose.Types.ObjectId;
+  description: string;
   permissions: string[];
   expiresAt: Date;
   isActive: boolean;
@@ -17,6 +19,8 @@ interface ApiKeyModel extends mongoose.Model<ApiKeyDoc> {
   build(attrs: {
     key: string;
     tenantId: string;
+    userId: string;
+    description: string;
     permissions?: string[];
     expiresAt?: Date;
     isActive?: boolean;
@@ -34,7 +38,17 @@ const apiKeySchema = new mongoose.Schema(
     tenantId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Tenant",
+      required: false,
+    },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      maxlength: 200,
     },
     permissions: {
       type: [String],
@@ -66,12 +80,16 @@ const apiKeySchema = new mongoose.Schema(
 // Add indexes for performance
 apiKeySchema.index({ key: 1 });
 apiKeySchema.index({ tenantId: 1 });
+apiKeySchema.index({ userId: 1 });
 apiKeySchema.index({ expiresAt: 1 });
+apiKeySchema.index({ tenantId: 1, userId: 1 }); // Compound index for tenant and user queries
 
 // Add build method to schema
 apiKeySchema.statics.build = (attrs: {
   key: string;
-  tenantId: string;
+  tenantId?: string;
+  userId: string;
+  description: string;
   permissions?: string[];
   expiresAt?: Date;
   isActive?: boolean;

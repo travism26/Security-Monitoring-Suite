@@ -66,17 +66,27 @@ export class MongoDBService {
 
   // API Key Operations
   async createApiKey(
-    tenantId: string,
+    userId: string,
+    description: string,
+    tenantId?: string,
     permissions?: string[],
     expiresAt?: Date
   ): Promise<ApiKeyDoc> {
     const key = this.generateApiKey();
-    const apiKey = ApiKey.build({
+    const apiKeyData: any = {
       key,
-      tenantId,
+      userId,
+      description,
       permissions,
       expiresAt,
-    });
+    };
+
+    // Only add tenantId if it's provided
+    if (tenantId) {
+      apiKeyData.tenantId = tenantId;
+    }
+
+    const apiKey = ApiKey.build(apiKeyData);
     return await apiKey.save();
   }
 
@@ -84,8 +94,23 @@ export class MongoDBService {
     return await ApiKey.findOne({ key, isActive: true });
   }
 
-  async getApiKeysByTenant(tenantId: string): Promise<ApiKeyDoc[]> {
-    return await ApiKey.find({ tenantId });
+  async getApiKeysByTenant(tenantId?: string): Promise<ApiKeyDoc[]> {
+    const query: { isActive: boolean; tenantId?: string } = { isActive: true };
+    if (tenantId) {
+      query.tenantId = tenantId;
+    }
+    return await ApiKey.find(query);
+  }
+
+  async getApiKeysByUser(userId: string): Promise<ApiKeyDoc[]> {
+    return await ApiKey.find({ userId, isActive: true });
+  }
+
+  async getApiKeyById(keyId: string): Promise<ApiKeyDoc | null> {
+    if (!mongoose.Types.ObjectId.isValid(keyId)) {
+      return null;
+    }
+    return await ApiKey.findById(keyId);
   }
 
   async deactivateApiKey(key: string): Promise<ApiKeyDoc | null> {
@@ -130,7 +155,21 @@ export class MongoDBService {
   }
 
   async getUserById(id: string): Promise<UserDoc | null> {
-    return await User.findById(id);
+    try {
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        console.log(`[MongoDB] Invalid user ID format: ${id}`);
+        return null;
+      }
+
+      const user = await User.findById(id);
+      if (!user) {
+        console.log(`[MongoDB] User not found with ID: ${id}`);
+      }
+      return user;
+    } catch (error) {
+      console.error(`[MongoDB] Error finding user by ID ${id}:`, error);
+      throw error;
+    }
   }
 
   async getUserByEmail(email: string): Promise<UserDoc | null> {

@@ -49,12 +49,10 @@ app.use("/gateway/api/v1", usersRouter);
 app.use("/gateway/api/v1", teamsRouter);
 app.use("/gateway/api/v1", apiKeysRouter);
 
-// Apply authentication and tenant validation to protected routes
+// Apply authentication to protected routes
 app.use("/api/teams", requireAuth);
-// Note: Tenant validation is optional during design phase
-app.use("/api/metrics", validateApiKey, validateTenantConsistency);
 
-// Apply tenant context and rate limiting to metric routes
+// Apply API key validation only to agent metrics routes
 app.use(
   "/gateway/api/v1",
   validateApiKey,
