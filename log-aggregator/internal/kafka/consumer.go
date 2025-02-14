@@ -191,19 +191,27 @@ func (c *Consumer) extractProcesses(rawMsg *struct {
 }, logID string) ([]domain.Process, error) {
 	// Handle case where Processes is null
 	if rawMsg.Processes == nil {
+		log.Printf("[DEBUG] Processes data is nil")
 		return []domain.Process{}, nil
 	}
+
+	// Debug log for processes data structure
+	processesBytes, _ := json.MarshalIndent(rawMsg.Processes, "", "  ")
+	log.Printf("[DEBUG] Raw processes data structure:\n%s", string(processesBytes))
 
 	processesData, ok := rawMsg.Processes.(map[string]interface{})
 	if !ok {
+		log.Printf("[ERROR] Failed to cast processes data to map[string]interface{}, got type: %T", rawMsg.Processes)
 		return nil, fmt.Errorf("invalid processes data format")
 	}
 
-	processList, ok := processesData["process_list"].([]interface{})
+	processList, ok := processesData["list"].([]interface{})
 	if !ok {
-		// If process_list is nil or not an array, return empty slice
+		log.Printf("[DEBUG] Process list is nil or not an array. Raw data: %+v", processesData)
 		return []domain.Process{}, nil
 	}
+
+	log.Printf("[DEBUG] Found %d processes in list", len(processList))
 
 	processes := make([]domain.Process, 0, len(processList))
 	for _, p := range processList {
