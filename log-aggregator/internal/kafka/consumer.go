@@ -180,6 +180,29 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	return logEntry, nil
 }
 
+func createTrimmedProcessesLog(processes map[string]interface{}) string {
+	// Create a copy of the map for logging
+	logData := make(map[string]interface{})
+	for k, v := range processes {
+		if k == "list" {
+			if list, ok := v.([]interface{}); ok {
+				trimmedList := list
+				if len(list) > 10 {
+					trimmedList = list[:10]
+					// Add a summary of omitted processes
+					logData["summary"] = fmt.Sprintf("Showing 10/%d processes", len(list))
+				}
+				logData[k] = trimmedList
+			}
+		} else {
+			logData[k] = v
+		}
+	}
+
+	processesBytes, _ := json.MarshalIndent(logData, "", "  ")
+	return string(processesBytes)
+}
+
 func (c *Consumer) extractProcesses(rawMsg *struct {
 	Host             interface{} `json:"host"`
 	Metrics          interface{} `json:"metrics"`
@@ -195,15 +218,14 @@ func (c *Consumer) extractProcesses(rawMsg *struct {
 		return []domain.Process{}, nil
 	}
 
-	// Debug log for processes data structure
-	processesBytes, _ := json.MarshalIndent(rawMsg.Processes, "", "  ")
-	log.Printf("[DEBUG] Raw processes data structure:\n%s", string(processesBytes))
-
 	processesData, ok := rawMsg.Processes.(map[string]interface{})
 	if !ok {
 		log.Printf("[ERROR] Failed to cast processes data to map[string]interface{}, got type: %T", rawMsg.Processes)
 		return nil, fmt.Errorf("invalid processes data format")
 	}
+
+	// Log trimmed process data
+	log.Printf("[DEBUG] Raw processes data structure:\n%s", createTrimmedProcessesLog(processesData))
 
 	processList, ok := processesData["list"].([]interface{})
 	if !ok {
