@@ -20,6 +20,10 @@ const validateMetrics = [
   body("data.metrics").notEmpty().withMessage("Metrics data is required"),
   body("data.timestamp").isISO8601().withMessage("Invalid timestamp format"),
   body("data.tenant_id").optional(),
+  body("data.user_id")
+    .optional()
+    .isString()
+    .withMessage("User ID must be a string"),
   body("data.tenant_metadata").optional(),
   body("data.api_key")
     .optional()
@@ -62,6 +66,7 @@ router.post(
       headers: req.headers,
       contentLength: req.get("content-length"),
       tenantId: req.get("x-tenant-id"),
+      userId: req.userId,
       timestamp: new Date().toISOString(),
       apiKey: req.apiKey,
     });
@@ -77,11 +82,19 @@ router.post(
         });
       }
 
-      // Add API key to the data payload from middleware
+      // Add API key and user data to the payload from middleware
       if (!req.apiKey) {
         throw new Error("API key not found in request");
       }
       data.api_key = req.apiKey;
+      if (req.userId) {
+        console.log("[DEBUG] User ID found in request", req.userId);
+        data.user_id = req.userId;
+      }
+      if (req.tenantId) {
+        console.log("[DEBUG] Tenant ID found in request", req.tenantId);
+        data.tenant_id = req.tenantId;
+      }
 
       // Log only process summary instead of detailed list
       const processCount = data.processes?.list?.length || 0;
@@ -108,10 +121,11 @@ router.post(
         });
       }
       console.log("[DEBUG] Kafka connection verified");
+      const tenantFeatureFlag = false; // turned off for now
 
       // Validate tenant ID consistency if header is present
       const headerTenantId = req.get("x-tenant-id");
-      if (headerTenantId && data.tenant_id) {
+      if (headerTenantId && data.tenant_id && tenantFeatureFlag) {
         if (headerTenantId !== data.tenant_id) {
           const errorProducer = kafkaWrapper.getProducer(
             "system-metrics-errors"

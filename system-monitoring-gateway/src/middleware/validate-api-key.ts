@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { NotAuthorizedError } from "../errors";
-import { ApiKeyService } from "../services/api-key.service";
+import { ApiKeyService, ApiKey } from "../services/api-key.service";
 
 export const validateApiKey = async (
   req: Request,
@@ -15,14 +15,16 @@ export const validateApiKey = async (
   }
 
   try {
-    // Only validate that the API key exists and is active
+    // Validate API key and get associated user data
     const validApiKey = await ApiKeyService.validateApiKey(apiKey);
     if (!validApiKey) {
       throw new NotAuthorizedError("Invalid API key");
     }
 
-    // Attach API key to request for downstream use (e.g., Kafka payload)
+    // Attach API key and user data to request for downstream use
     req.apiKey = apiKey;
+    req.userId = validApiKey.userId;
+    req.tenantId = validApiKey.tenantId;
 
     next();
   } catch (error) {
@@ -35,6 +37,8 @@ declare global {
   namespace Express {
     interface Request {
       apiKey?: string;
+      userId?: string;
+      tenantId?: string;
     }
   }
 }

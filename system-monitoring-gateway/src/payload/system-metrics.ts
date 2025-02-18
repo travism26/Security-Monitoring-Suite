@@ -23,6 +23,7 @@ export interface MetricsPayload {
   timestamp: string;
   tenant_id: string;
   api_key: string;
+  user_id?: string;
   tenant_metadata?: { [key: string]: string };
 
   host: {
