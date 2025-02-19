@@ -176,6 +176,56 @@
   - Add load testing suite
   - Implement security tests
 
+## System Metrics Dashboard
+
+- [ ] Database Enhancements
+
+  - Create system_metrics_hourly view for aggregated metrics
+  - Create process_metrics_hourly view for process stats
+  - Add performance indexes for metrics querying
+  - Add data retention policies
+
+- [ ] Backend API Endpoints
+
+  - Create /api/v1/metrics/system endpoint
+  - Create /api/v1/metrics/processes endpoint
+  - Create /api/v1/metrics/hosts endpoint
+  - Implement metrics aggregation service
+
+- [ ] System Overview Component
+
+  - Create MetricsProvider context
+  - Implement real-time metrics display
+  - Add historical trends graphs
+  - Create host selector component
+
+- [ ] Process Monitor Component
+
+  - Create ProcessTable component with sorting/filtering
+  - Implement ProcessDetails modal
+  - Add process metrics graphs
+  - Create process search functionality
+
+- [ ] Host Overview Component
+
+  - Implement HostSelector component
+  - Create HostMetrics display
+  - Add system resource graphs
+  - Implement top processes list
+
+- [ ] Shared Components
+
+  - Create TimeRangeSelector
+  - Implement MetricsGraph component
+  - Add LoadingState handlers
+  - Create ErrorBoundary component
+
+- [ ] API Integration
+  - Implement MetricsService
+  - Create data models and types
+  - Add error handling
+  - Implement data caching
+
 ## Deployment
 
 - [ ] CI/CD Pipeline
