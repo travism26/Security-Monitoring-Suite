@@ -14,8 +14,8 @@ import (
 // Interfaces for testing
 type LogServiceInterface interface {
 	StoreLog(log *domain.Log) error
-	GetLog(id string) (*domain.Log, error)
-	ListLogs(limit, offset int) ([]*domain.Log, error)
+	GetLog(userID, id string) (*domain.Log, error)
+	ListLogs(userID string, limit, offset int) ([]*domain.Log, error)
 }
 
 type AlertServiceInterface interface {
@@ -42,16 +42,16 @@ func (m *MockLogService) StoreLog(log *domain.Log) error {
 	return args.Error(0)
 }
 
-func (m *MockLogService) GetLog(id string) (*domain.Log, error) {
-	args := m.Called(id)
+func (m *MockLogService) GetLog(userID, id string) (*domain.Log, error) {
+	args := m.Called(userID, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*domain.Log), args.Error(1)
 }
 
-func (m *MockLogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
-	args := m.Called(limit, offset)
+func (m *MockLogService) ListLogs(userID string, limit, offset int) ([]*domain.Log, error) {
+	args := m.Called(userID, limit, offset)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}

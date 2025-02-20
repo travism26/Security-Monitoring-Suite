@@ -15,12 +15,10 @@ const (
 )
 
 type LogServiceConfig struct {
-	OrganizationID      string
-	Environment         string
-	Application         string
-	Component           string
-	MultiTenancyEnabled bool
-	Cache               struct {
+	Environment string
+	Application string
+	Component   string
+	Cache       struct {
 		Enabled      bool
 		TTL          time.Duration
 		TimeRangeTTL time.Duration
@@ -66,11 +64,6 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 	fmt.Printf("[DEBUG] Storing log with ID: %s\n", log.ID)
 	fmt.Printf("[DEBUG] Raw log data: %+v\n", log)
 
-	// Clear organization ID if multi-tenancy is disabled
-	if !s.config.MultiTenancyEnabled {
-		log.OrganizationID = ""
-	}
-
 	// Enrich log with environment information
 	log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
 	log.ProcessedCount++
@@ -94,7 +87,7 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 
 	// If store was successful and cache is enabled, invalidate related cache entries
 	if err == nil && s.cache != nil {
-		s.cache.Delete(s.keyGenerator.ForLog(s.config.OrganizationID, log.ID))
+		s.cache.Delete(s.keyGenerator.ForLog(log.UserID, log.ID))
 		// Clear list caches as they might be affected
 		s.cache.Clear() // TODO: Implement more granular cache invalidation
 	}
@@ -105,11 +98,6 @@ func (s *LogService) StoreLog(log *domain.Log) error {
 func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	// Process metadata and enrich each log in the batch
 	for _, log := range logs {
-		// Clear organization ID if multi-tenancy is disabled
-		if !s.config.MultiTenancyEnabled {
-			log.OrganizationID = ""
-		}
-
 		// Enrich log with environment information
 		log.EnrichLog(s.config.Environment, s.config.Application, s.config.Component)
 		log.ProcessedCount++
@@ -130,7 +118,7 @@ func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	// If store was successful and cache is enabled, invalidate affected cache entries
 	if err == nil && s.cache != nil {
 		for _, log := range logs {
-			s.cache.Delete(s.keyGenerator.ForLog(s.config.OrganizationID, log.ID))
+			s.cache.Delete(s.keyGenerator.ForLog(log.UserID, log.ID))
 		}
 		// Clear list caches as they might be affected
 		s.cache.Clear() // TODO: Implement more granular cache invalidation
@@ -139,10 +127,10 @@ func (s *LogService) StoreBatch(logs []*domain.Log) error {
 	return err
 }
 
-func (s *LogService) GetLog(id string) (*domain.Log, error) {
+func (s *LogService) GetLog(userID, id string) (*domain.Log, error) {
 	if s.cache != nil {
 		// Try to get from cache first
-		cacheKey := s.keyGenerator.ForLog(s.config.OrganizationID, id)
+		cacheKey := s.keyGenerator.ForLog(userID, id)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if log, ok := cached.(*domain.Log); ok {
 				return log, nil
@@ -154,28 +142,24 @@ func (s *LogService) GetLog(id string) (*domain.Log, error) {
 	var log *domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		log, err = s.repo.FindByID(orgID, id)
+		log, err = s.repo.FindByID(userID, id)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && log != nil {
-			s.cache.Set(s.keyGenerator.ForLog(s.config.OrganizationID, id), log, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForLog(userID, id), log, s.config.Cache.TTL)
 		}
 		return nil
 	})
 	return log, err
 }
 
-func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
+func (s *LogService) ListLogs(userID string, limit, offset int) ([]*domain.Log, error) {
 	if s.cache != nil {
 		// Try to get from cache first
-		cacheKey := s.keyGenerator.ForLogList(s.config.OrganizationID, limit, offset)
+		cacheKey := s.keyGenerator.ForLogList(userID, limit, offset)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
@@ -187,25 +171,21 @@ func (s *LogService) ListLogs(limit, offset int) ([]*domain.Log, error) {
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		logs, err = s.repo.List(orgID, limit, offset)
+		logs, err = s.repo.List(userID, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForLogList(s.config.OrganizationID, limit, offset), logs, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForLogList(userID, limit, offset), logs, s.config.Cache.TTL)
 		}
 		return nil
 	})
 	return logs, err
 }
 
-func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([]*domain.Log, error) {
+func (s *LogService) ListByTimeRange(userID string, start, end time.Time, limit, offset int) ([]*domain.Log, error) {
 	// Validate time range
 	if start.After(end) {
 		return nil, fmt.Errorf("invalid time range: start time %v is after end time %v", start, end)
@@ -213,7 +193,7 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 
 	if s.cache != nil {
 		// Try to get from cache first
-		cacheKey := s.keyGenerator.ForTimeRange(s.config.OrganizationID, start, end, limit, offset)
+		cacheKey := s.keyGenerator.ForTimeRange(userID, start, end, limit, offset)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
@@ -225,18 +205,14 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		logs, err = s.repo.ListByTimeRange(orgID, start, end, limit, offset)
+		logs, err = s.repo.ListByTimeRange(userID, start, end, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		// Cache the result if cache is enabled
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForTimeRange(s.config.OrganizationID, start, end, limit, offset), logs, s.config.Cache.TimeRangeTTL)
+			s.cache.Set(s.keyGenerator.ForTimeRange(userID, start, end, limit, offset), logs, s.config.Cache.TimeRangeTTL)
 		}
 		return nil
 	})
@@ -244,13 +220,13 @@ func (s *LogService) ListByTimeRange(start, end time.Time, limit, offset int) ([
 }
 
 // CountByTimeRange returns the total number of logs within a time range
-func (s *LogService) CountByTimeRange(start, end time.Time) (int64, error) {
+func (s *LogService) CountByTimeRange(userID string, start, end time.Time) (int64, error) {
 	if start.After(end) {
 		return 0, fmt.Errorf("invalid time range: start time %v is after end time %v", start, end)
 	}
 
 	if s.cache != nil {
-		cacheKey := s.keyGenerator.ForTimeRangeCount(s.config.OrganizationID, start, end)
+		cacheKey := s.keyGenerator.ForTimeRangeCount(userID, start, end)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if count, ok := cached.(int64); ok {
 				return count, nil
@@ -261,17 +237,13 @@ func (s *LogService) CountByTimeRange(start, end time.Time) (int64, error) {
 	var count int64
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		count, err = s.repo.CountByTimeRange(orgID, start, end)
+		count, err = s.repo.CountByTimeRange(userID, start, end)
 		if err != nil {
 			return err
 		}
 
 		if s.cache != nil {
-			s.cache.Set(s.keyGenerator.ForTimeRangeCount(s.config.OrganizationID, start, end), count, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForTimeRangeCount(userID, start, end), count, s.config.Cache.TTL)
 		}
 		return nil
 	})
@@ -279,9 +251,9 @@ func (s *LogService) CountByTimeRange(start, end time.Time) (int64, error) {
 }
 
 // ListByHost retrieves logs for a specific host
-func (s *LogService) ListByHost(host string, limit, offset int) ([]*domain.Log, error) {
+func (s *LogService) ListByHost(userID, host string, limit, offset int) ([]*domain.Log, error) {
 	if s.cache != nil {
-		cacheKey := s.keyGenerator.ForHostLogs(s.config.OrganizationID, host, limit, offset)
+		cacheKey := s.keyGenerator.ForHostLogs(userID, host, limit, offset)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
@@ -292,17 +264,13 @@ func (s *LogService) ListByHost(host string, limit, offset int) ([]*domain.Log, 
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		logs, err = s.repo.ListByHost(orgID, host, limit, offset)
+		logs, err = s.repo.ListByHost(userID, host, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForHostLogs(s.config.OrganizationID, host, limit, offset), logs, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForHostLogs(userID, host, limit, offset), logs, s.config.Cache.TTL)
 		}
 		return nil
 	})
@@ -310,9 +278,9 @@ func (s *LogService) ListByHost(host string, limit, offset int) ([]*domain.Log, 
 }
 
 // ListByLevel retrieves logs of a specific level
-func (s *LogService) ListByLevel(level string, limit, offset int) ([]*domain.Log, error) {
+func (s *LogService) ListByLevel(userID, level string, limit, offset int) ([]*domain.Log, error) {
 	if s.cache != nil {
-		cacheKey := s.keyGenerator.ForLevelLogs(s.config.OrganizationID, level, limit, offset)
+		cacheKey := s.keyGenerator.ForLevelLogs(userID, level, limit, offset)
 		if cached, found := s.cache.Get(cacheKey); found {
 			if logs, ok := cached.([]*domain.Log); ok {
 				return logs, nil
@@ -323,17 +291,13 @@ func (s *LogService) ListByLevel(level string, limit, offset int) ([]*domain.Log
 	var logs []*domain.Log
 	err := s.retryOperation(func() error {
 		var err error
-		orgID := ""
-		if s.config.MultiTenancyEnabled {
-			orgID = s.config.OrganizationID
-		}
-		logs, err = s.repo.ListByLevel(orgID, level, limit, offset)
+		logs, err = s.repo.ListByLevel(userID, level, limit, offset)
 		if err != nil {
 			return err
 		}
 
 		if s.cache != nil && logs != nil {
-			s.cache.Set(s.keyGenerator.ForLevelLogs(s.config.OrganizationID, level, limit, offset), logs, s.config.Cache.TTL)
+			s.cache.Set(s.keyGenerator.ForLevelLogs(userID, level, limit, offset), logs, s.config.Cache.TTL)
 		}
 		return nil
 	})

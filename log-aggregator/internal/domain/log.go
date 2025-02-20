@@ -23,6 +23,9 @@ type Log struct {
 	// Organization that owns this log entry
 	OrganizationID string `json:"organization_id"`
 
+	// User that generated this log entry
+	UserID string `json:"user_id"`
+
 	// When the log event occurred
 	Timestamp time.Time `json:"timestamp"`
 
@@ -96,30 +99,39 @@ type LogRepository interface {
 	// This is more efficient than storing logs one by one when processing multiple logs
 	StoreBatch(logs []*Log) error
 
-	// FindByID retrieves a specific log entry by its ID and organization
-	FindByID(orgID, id string) (*Log, error)
+	// FindByID retrieves a specific log entry by its ID and user
+	FindByID(userID, id string) (*Log, error)
 
-	// List retrieves multiple logs for an organization with pagination support
+	// List retrieves multiple logs for a user with pagination support
 	// limit: maximum number of logs to return
 	// offset: number of logs to skip
-	List(orgID string, limit, offset int) ([]*Log, error)
+	List(userID string, limit, offset int) ([]*Log, error)
 
 	// ListByTimeRange retrieves logs within a specific time range with pagination
 	// This is useful for querying logs within a specific window
-	ListByTimeRange(orgID string, start, end time.Time, limit, offset int) ([]*Log, error)
+	ListByTimeRange(userID string, start, end time.Time, limit, offset int) ([]*Log, error)
 
-	// CountByTimeRange returns the total number of logs within a time range for an organization
-	CountByTimeRange(orgID string, start, end time.Time) (int64, error)
+	// CountByTimeRange returns the total number of logs within a time range for a user
+	CountByTimeRange(userID string, start, end time.Time) (int64, error)
 
-	// ListByHost retrieves logs for a specific host within an organization
-	ListByHost(orgID string, host string, limit, offset int) ([]*Log, error)
+	// ListByHost retrieves logs for a specific host for a user
+	ListByHost(userID string, host string, limit, offset int) ([]*Log, error)
 
-	// ListByLevel retrieves logs of a specific level within an organization
-	ListByLevel(orgID string, level string, limit, offset int) ([]*Log, error)
+	// ListByLevel retrieves logs of a specific level for a user
+	ListByLevel(userID string, level string, limit, offset int) ([]*Log, error)
 
 	// ListByAPIKey retrieves logs for a specific API key
 	ListByAPIKey(apiKey string, limit, offset int) ([]*Log, error)
 
 	// CountByAPIKey returns the total number of logs for a specific API key
 	CountByAPIKey(apiKey string) (int64, error)
+
+	// ListByUserID retrieves logs for a specific user
+	ListByUserID(userID string, limit, offset int) ([]*Log, error)
+
+	// CountByUserID returns the total number of logs for a specific user
+	CountByUserID(userID string) (int64, error)
+
+	// ListByUserIDAndTimeRange retrieves logs for a specific user within a time range
+	ListByUserIDAndTimeRange(userID string, start, end time.Time, limit, offset int) ([]*Log, error)
 }

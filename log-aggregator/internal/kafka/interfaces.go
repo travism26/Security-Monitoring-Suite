@@ -5,8 +5,8 @@ import "github.com/travism26/log-aggregator/internal/domain"
 // LogService defines the interface for log operations
 type LogService interface {
 	StoreLog(log *domain.Log) error
-	GetLog(id string) (*domain.Log, error)
-	ListLogs(limit, offset int) ([]*domain.Log, error)
+	GetLog(userID, id string) (*domain.Log, error)
+	ListLogs(userID string, limit, offset int) ([]*domain.Log, error)
 }
 
 // AlertService defines the interface for alert operations

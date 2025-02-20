@@ -97,19 +97,19 @@ func NewCacheKeyGenerator() *CacheKeyGenerator {
 }
 
 // ForLog generates a cache key for a single log
-func (g *CacheKeyGenerator) ForLog(orgID, logID string) string {
-	return fmt.Sprintf("log:%s:%s", orgID, logID)
+func (g *CacheKeyGenerator) ForLog(userID, logID string) string {
+	return fmt.Sprintf("log:user:%s:%s", userID, logID)
 }
 
 // ForLogList generates a cache key for a paginated log list
-func (g *CacheKeyGenerator) ForLogList(orgID string, limit, offset int) string {
-	return fmt.Sprintf("logs:%s:%d:%d", orgID, limit, offset)
+func (g *CacheKeyGenerator) ForLogList(userID string, limit, offset int) string {
+	return fmt.Sprintf("logs:user:%s:%d:%d", userID, limit, offset)
 }
 
 // ForTimeRange generates a cache key for time range queries
-func (g *CacheKeyGenerator) ForTimeRange(orgID string, start, end time.Time, limit, offset int) string {
-	return fmt.Sprintf("logs:%s:time:%d-%d:%d:%d",
-		orgID,
+func (g *CacheKeyGenerator) ForTimeRange(userID string, start, end time.Time, limit, offset int) string {
+	return fmt.Sprintf("logs:user:%s:time:%d-%d:%d:%d",
+		userID,
 		start.Unix(),
 		end.Unix(),
 		limit,
@@ -118,18 +118,18 @@ func (g *CacheKeyGenerator) ForTimeRange(orgID string, start, end time.Time, lim
 }
 
 // ForTimeRangeCount generates a cache key for log count within a time range
-func (g *CacheKeyGenerator) ForTimeRangeCount(orgID string, start, end time.Time) string {
-	return fmt.Sprintf("logs:%s:count:%d-%d",
-		orgID,
+func (g *CacheKeyGenerator) ForTimeRangeCount(userID string, start, end time.Time) string {
+	return fmt.Sprintf("logs:user:%s:count:%d-%d",
+		userID,
 		start.Unix(),
 		end.Unix(),
 	)
 }
 
 // ForHostLogs generates a cache key for logs from a specific host
-func (g *CacheKeyGenerator) ForHostLogs(orgID, host string, limit, offset int) string {
-	return fmt.Sprintf("logs:%s:host:%s:%d:%d",
-		orgID,
+func (g *CacheKeyGenerator) ForHostLogs(userID, host string, limit, offset int) string {
+	return fmt.Sprintf("logs:user:%s:host:%s:%d:%d",
+		userID,
 		host,
 		limit,
 		offset,
@@ -137,9 +137,9 @@ func (g *CacheKeyGenerator) ForHostLogs(orgID, host string, limit, offset int) s
 }
 
 // ForLevelLogs generates a cache key for logs of a specific level
-func (g *CacheKeyGenerator) ForLevelLogs(orgID, level string, limit, offset int) string {
-	return fmt.Sprintf("logs:%s:level:%s:%d:%d",
-		orgID,
+func (g *CacheKeyGenerator) ForLevelLogs(userID, level string, limit, offset int) string {
+	return fmt.Sprintf("logs:user:%s:level:%s:%d:%d",
+		userID,
 		level,
 		limit,
 		offset,

@@ -49,7 +49,16 @@ func NewLogHandler(logService *service.LogService) *LogHandler {
 // @Router /logs/{id} [get]
 func (h *LogHandler) GetLog(c *gin.Context) {
 	id := c.Param("id")
-	log, err := h.logService.GetLog(id)
+	userID := c.GetString("user_id") // Get user_id from context (set by auth middleware)
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "User not authenticated",
+		})
+		return
+	}
+
+	log, err := h.logService.GetLog(userID, id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, Response{
 			Success: false,
@@ -71,12 +80,14 @@ func (h *LogHandler) GetLog(c *gin.Context) {
 // @Produce json
 // @Param limit query int false "Number of items per page" default(10)
 // @Param offset query int false "Number of items to skip" default(0)
+// @Param user_id query string false "Filter logs by user ID"
 // @Success 200 {object} PaginatedResponse
 // @Failure 500 {object} Response
 // @Router /logs [get]
 func (h *LogHandler) ListLogs(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	userID := c.Query("user_id")
 
 	// Validate pagination parameters
 	if limit < 1 || limit > 100 {
@@ -86,7 +97,7 @@ func (h *LogHandler) ListLogs(c *gin.Context) {
 		offset = 0
 	}
 
-	logs, err := h.logService.ListLogs(limit, offset)
+	logs, err := h.logService.ListLogs(userID, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			Success: false,
@@ -127,6 +138,15 @@ func (h *LogHandler) ListLogsByTimeRange(c *gin.Context) {
 	endStr := c.Query("end_time")
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	userID := c.GetString("user_id") // Get user_id from context
+
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, Response{
+			Success: false,
+			Error:   "User not authenticated",
+		})
+		return
+	}
 
 	// Validate pagination parameters
 	if limit < 1 || limit > 100 {
@@ -155,7 +175,7 @@ func (h *LogHandler) ListLogsByTimeRange(c *gin.Context) {
 		return
 	}
 
-	logs, err := h.logService.ListByTimeRange(start, end, limit, offset)
+	logs, err := h.logService.ListByTimeRange(userID, start, end, limit, offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, Response{
 			Success: false,
