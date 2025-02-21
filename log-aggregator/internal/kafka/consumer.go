@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/travism26/log-aggregator/internal/config"
 	"github.com/travism26/log-aggregator/internal/domain"
 
 	"github.com/IBM/sarama"
@@ -19,13 +20,14 @@ type Consumer struct {
 	logService        LogService
 	alertService      AlertService
 	processRepository ProcessRepository // rename to Service
+	config            *config.Config
 }
 
-func NewConsumer(brokers []string, groupID, topic string, logService LogService, alertService AlertService, processRepo ProcessRepository) (*Consumer, error) {
-	config := sarama.NewConfig()
-	config.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
+func NewConsumer(brokers []string, groupID, topic string, logService LogService, alertService AlertService, processRepo ProcessRepository, cfg *config.Config) (*Consumer, error) {
+	saramaConfig := sarama.NewConfig()
+	saramaConfig.Consumer.Group.Rebalance.Strategy = sarama.NewBalanceStrategyRoundRobin()
 
-	consumer, err := sarama.NewConsumer(brokers, config)
+	consumer, err := sarama.NewConsumer(brokers, saramaConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +38,7 @@ func NewConsumer(brokers []string, groupID, topic string, logService LogService,
 		logService:        logService,
 		alertService:      alertService,
 		processRepository: processRepo,
+		config:            cfg,
 	}, nil
 }
 
@@ -139,9 +142,9 @@ func (c *Consumer) createLogEntry(rawMsg *struct {
 	}
 
 	tenantID := rawMsg.TenantID
-	if tenantID == "" {
-		// Set a default UUID for the default tenant
-		tenantID = "00000000-0000-4000-a000-000000000000"
+	if tenantID == "" || !c.config.Features.MultiTenancy.Enabled {
+		// Use system organization when multi-tenancy is disabled
+		tenantID = "system"
 	}
 
 	logEntry := &domain.Log{

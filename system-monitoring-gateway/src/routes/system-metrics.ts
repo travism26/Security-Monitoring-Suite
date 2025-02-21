@@ -62,6 +62,7 @@ router.post(
   validateRequest,
   validateTenantConsistency,
   async (req: Request<{}, {}, SystemMetricsData>, res: Response) => {
+    const tenantFeatureFlag = false; // turned off for now
     console.log("[DEBUG] Received metrics request", {
       headers: req.headers,
       contentLength: req.get("content-length"),
@@ -91,7 +92,7 @@ router.post(
         console.log("[DEBUG] User ID found in request", req.userId);
         data.user_id = req.userId;
       }
-      if (req.tenantId) {
+      if (req.tenantId && tenantFeatureFlag) {
         console.log("[DEBUG] Tenant ID found in request", req.tenantId);
         data.tenant_id = req.tenantId;
       }
@@ -121,7 +122,6 @@ router.post(
         });
       }
       console.log("[DEBUG] Kafka connection verified");
-      const tenantFeatureFlag = false; // turned off for now
 
       // Validate tenant ID consistency if header is present
       const headerTenantId = req.get("x-tenant-id");

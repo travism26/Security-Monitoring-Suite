@@ -102,6 +102,7 @@ func main() {
 		logService,
 		alertService,
 		processRepo,
+		cfg,
 	)
 	if err != nil {
 		log.Fatalf("Failed to create Kafka consumer: %v", err)

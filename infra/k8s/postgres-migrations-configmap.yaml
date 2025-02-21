@@ -6,7 +6,7 @@ data:
   001_initial_schema.sql: |
     -- Schema Version: 1.0.0
     -- Created: 2025-01-31
-    -- Description: Core schema for log aggregation system
+    -- Description: Core schema for log aggregation system including logs, process logs, alerts, and indexes
 
     -- Logs table schema
     CREATE TABLE IF NOT EXISTS logs (
@@ -19,7 +19,10 @@ data:
         process_count INTEGER,
         total_cpu_percent FLOAT,
         total_memory_usage BIGINT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        organization_id VARCHAR(24),
+        user_id VARCHAR(24),
+        api_key VARCHAR(255)
     );
 
     -- Process logs table schema
@@ -34,16 +37,15 @@ data:
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
-    -- Performance indexes
+    -- Performance indexes for logs and process logs
     CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_logs_host ON logs(host);
     CREATE INDEX IF NOT EXISTS idx_process_logs_log_id ON process_logs(log_id);
     CREATE INDEX IF NOT EXISTS idx_process_logs_name ON process_logs(name);
-
-  002_alerts_schema.sql: |
-    -- Schema Version: 1.0.0
-    -- Created: 2025-01-31
-    -- Description: Alert management schema for log aggregation system
+    CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
+    CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
+    CREATE INDEX IF NOT EXISTS idx_process_logs_pid ON process_logs(pid);
+    CREATE INDEX IF NOT EXISTS idx_process_logs_created_at ON process_logs(created_at);
 
     -- Alerts table schema
     CREATE TABLE IF NOT EXISTS alerts (
@@ -55,7 +57,9 @@ data:
         source VARCHAR(255) NOT NULL,
         created_at TIMESTAMP NOT NULL,
         updated_at TIMESTAMP NOT NULL,
-        resolved_at TIMESTAMP
+        resolved_at TIMESTAMP,
+        organization_id VARCHAR(24),
+        user_id VARCHAR(24)
     );
 
     -- Alert logs relationship table
@@ -76,26 +80,21 @@ data:
         FOREIGN KEY (alert_id) REFERENCES alerts(id) ON DELETE CASCADE
     );
 
-    -- Performance indexes
+    -- Performance indexes for alerts
     CREATE INDEX IF NOT EXISTS idx_alerts_status ON alerts(status);
     CREATE INDEX IF NOT EXISTS idx_alerts_severity ON alerts(severity);
     CREATE INDEX IF NOT EXISTS idx_alerts_created_at ON alerts(created_at);
     CREATE INDEX IF NOT EXISTS idx_alerts_source ON alerts(source);
-
-  003_add_indexes.sql: |
-    -- Add additional performance indexes
-    CREATE INDEX IF NOT EXISTS idx_logs_level ON logs(level);
-    CREATE INDEX IF NOT EXISTS idx_logs_created_at ON logs(created_at);
-    CREATE INDEX IF NOT EXISTS idx_process_logs_pid ON process_logs(pid);
-    CREATE INDEX IF NOT EXISTS idx_process_logs_created_at ON process_logs(created_at);
     CREATE INDEX IF NOT EXISTS idx_alerts_updated_at ON alerts(updated_at);
 
-  004_add_multi_tenancy.sql: |
-    -- Add multi-tenancy support
+  002_multi_tenancy.sql: |
+    -- Schema Version: 1.0.0
+    -- Created: 2025-01-31
+    -- Description: Multi-tenancy support with organizations, API keys, and related schema updates
 
     -- Create organizations table
     CREATE TABLE organizations (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        id VARCHAR(24) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -106,7 +105,7 @@ data:
     -- Create API keys table
     CREATE TABLE api_keys (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        organization_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+        organization_id VARCHAR(24) NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         key_type VARCHAR(50) NOT NULL CHECK (key_type IN ('agent', 'customer')),
         key_hash VARCHAR(255) NOT NULL,
         name VARCHAR(255) NOT NULL,
@@ -117,13 +116,20 @@ data:
         permissions JSONB DEFAULT '{}'::jsonb
     );
 
-    -- Add tenant ID to logs table (nullable for optional multi-tenancy)
-    ALTER TABLE logs 
-    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NULL;
+    -- Add foreign key constraints for organization_id
+    ALTER TABLE logs
+    ADD CONSTRAINT logs_organization_id_fkey 
+    FOREIGN KEY (organization_id) 
+    REFERENCES organizations(id) 
+    ON DELETE CASCADE
+    DEFERRABLE INITIALLY DEFERRED;
 
-    -- Add tenant ID to alerts table (nullable for optional multi-tenancy)
     ALTER TABLE alerts
-    ADD COLUMN organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE NULL;
+    ADD CONSTRAINT alerts_organization_id_fkey 
+    FOREIGN KEY (organization_id) 
+    REFERENCES organizations(id) 
+    ON DELETE CASCADE
+    DEFERRABLE INITIALLY DEFERRED;
 
     -- Add indexes for tenant-based queries
     CREATE INDEX idx_logs_org_id ON logs(organization_id);
@@ -149,51 +155,149 @@ data:
         FOR EACH ROW
         EXECUTE FUNCTION update_updated_at_column();
 
-  007_add_api_key_column.sql: |
-    -- Add API key tracking to logs table
-
-    -- Add api_key column to logs table
-    ALTER TABLE logs
-    ADD COLUMN api_key VARCHAR(255);
-
-    -- Create index for efficient querying by API key
-    CREATE INDEX idx_logs_api_key ON logs(api_key);
-
-  008_nullable_organization_id.sql: |
-    -- Make organization_id nullable for alerts and logs when multi-tenancy is disabled
-    ALTER TABLE alerts DROP CONSTRAINT alerts_organization_id_fkey;
-    ALTER TABLE alerts ALTER COLUMN organization_id DROP NOT NULL;
-    ALTER TABLE alerts ADD CONSTRAINT alerts_organization_id_fkey 
-        FOREIGN KEY (organization_id) 
-        REFERENCES organizations(id) 
-        ON DELETE CASCADE
-        DEFERRABLE INITIALLY DEFERRED;
-
-    ALTER TABLE logs DROP CONSTRAINT logs_organization_id_fkey;
-    ALTER TABLE logs ALTER COLUMN organization_id DROP NOT NULL;
-    ALTER TABLE logs ADD CONSTRAINT logs_organization_id_fkey 
-        FOREIGN KEY (organization_id) 
-        REFERENCES organizations(id) 
-        ON DELETE CASCADE
-        DEFERRABLE INITIALLY DEFERRED;
-
-  010_add_user_tracking.sql: |
+  003_metrics_views.sql: |
     -- Schema Version: 1.0.0
-    -- Created: 2025-02-19
-    -- Description: Add user tracking to logs and alerts
+    -- Created: 2025-02-18
+    -- Description: Add views for system metrics aggregation
 
-    -- Add user_id column to logs table
-    ALTER TABLE logs
-    ADD COLUMN user_id VARCHAR(24);
+    -- System metrics hourly aggregation view
+    CREATE OR REPLACE VIEW system_metrics_hourly AS
+    SELECT 
+        date_trunc('hour', timestamp) as time_bucket,
+        organization_id,
+        host,
+        COUNT(*) as sample_count,
+        AVG(total_cpu_percent) as avg_cpu_percent,
+        MAX(total_cpu_percent) as max_cpu_percent,
+        MIN(total_cpu_percent) as min_cpu_percent,
+        AVG(total_memory_usage) as avg_memory_usage,
+        MAX(total_memory_usage) as max_memory_usage,
+        MIN(total_memory_usage) as min_memory_usage,
+        AVG(process_count) as avg_process_count,
+        MAX(process_count) as max_process_count,
+        MIN(process_count) as min_process_count
+    FROM logs
+    WHERE total_cpu_percent IS NOT NULL
+        AND total_memory_usage IS NOT NULL
+        AND process_count IS NOT NULL
+    GROUP BY 
+        date_trunc('hour', timestamp),
+        organization_id,
+        host;
 
-    -- Add user_id column to alerts table
-    ALTER TABLE alerts
-    ADD COLUMN user_id VARCHAR(24);
+    -- Process metrics hourly aggregation view
+    CREATE OR REPLACE VIEW process_metrics_hourly AS
+    SELECT 
+        date_trunc('hour', l.timestamp) as time_bucket,
+        l.organization_id,
+        l.host,
+        pl.name as process_name,
+        COUNT(*) as sample_count,
+        AVG(pl.cpu_percent) as avg_cpu_percent,
+        MAX(pl.cpu_percent) as max_cpu_percent,
+        MIN(pl.cpu_percent) as min_cpu_percent,
+        AVG(pl.memory_usage) as avg_memory_usage,
+        MAX(pl.memory_usage) as max_memory_usage,
+        MIN(pl.memory_usage) as min_memory_usage,
+        array_agg(DISTINCT pl.status) as status_list
+    FROM logs l
+    JOIN process_logs pl ON l.id = pl.log_id
+    WHERE pl.cpu_percent IS NOT NULL
+        AND pl.memory_usage IS NOT NULL
+    GROUP BY 
+        date_trunc('hour', l.timestamp),
+        l.organization_id,
+        l.host,
+        pl.name;
 
-    -- Add indexes for efficient querying
+    -- Add indexes to improve view performance
+    CREATE INDEX IF NOT EXISTS idx_logs_metrics ON logs (
+        timestamp,
+        organization_id,
+        host,
+        total_cpu_percent,
+        total_memory_usage,
+        process_count
+    ) WHERE 
+        total_cpu_percent IS NOT NULL 
+        AND total_memory_usage IS NOT NULL 
+        AND process_count IS NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_process_logs_metrics ON process_logs (
+        name,
+        cpu_percent,
+        memory_usage
+    ) WHERE 
+        cpu_percent IS NOT NULL 
+        AND memory_usage IS NOT NULL;
+
+    -- Add function to get latest host metrics
+    CREATE OR REPLACE FUNCTION get_latest_host_metrics(
+        org_id VARCHAR(24),
+        host_filter VARCHAR DEFAULT NULL
+    )
+    RETURNS TABLE (
+        host VARCHAR,
+        last_seen TIMESTAMP,
+        total_cpu_percent FLOAT,
+        total_memory_usage BIGINT,
+        process_count INTEGER
+    ) AS $$
+    BEGIN
+        RETURN QUERY
+        WITH latest_logs AS (
+            SELECT DISTINCT ON (host) 
+                host,
+                timestamp as last_seen,
+                total_cpu_percent,
+                total_memory_usage,
+                process_count
+            FROM logs
+            WHERE organization_id = org_id
+                AND (host_filter IS NULL OR host = host_filter)
+                AND total_cpu_percent IS NOT NULL
+                AND total_memory_usage IS NOT NULL
+                AND process_count IS NOT NULL
+            ORDER BY host, timestamp DESC
+        )
+        SELECT * FROM latest_logs;
+    END;
+    $$ LANGUAGE plpgsql;
+
+  004_user_and_org_indexes.sql: |
+    -- Schema Version: 1.0.0
+    -- Created: 2025-02-21
+    -- Description: Add indexes for user tracking and organization queries
+
+    -- Add indexes for user tracking
     CREATE INDEX idx_logs_user_id ON logs(user_id);
     CREATE INDEX idx_alerts_user_id ON alerts(user_id);
-
-    -- Add composite indexes for common queries
     CREATE INDEX idx_logs_user_timestamp ON logs(user_id, timestamp);
     CREATE INDEX idx_alerts_user_status ON alerts(user_id, status);
+
+  005_system_organization.sql: |
+    -- Schema Version: 1.0.0
+    -- Created: 2025-02-21
+    -- Description: Add system organization and protection mechanisms
+
+    -- Insert system organization
+    INSERT INTO organizations (id, name, status, settings) 
+    VALUES ('system', 'System', 'active', '{"type": "system", "protected": true}'::jsonb)
+    ON CONFLICT (id) DO NOTHING;
+
+    -- Create function to prevent system organization modification
+    CREATE OR REPLACE FUNCTION prevent_system_org_modification()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        IF OLD.id = 'system' THEN
+            RAISE EXCEPTION 'Cannot modify or delete system organization';
+        END IF;
+        RETURN OLD;
+    END;
+    $$ LANGUAGE plpgsql;
+
+    -- Create trigger to protect system organization
+    CREATE TRIGGER protect_system_org
+    BEFORE UPDATE OR DELETE ON organizations
+    FOR EACH ROW
+    EXECUTE FUNCTION prevent_system_org_modification();
