@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../contexts/AuthContext'
 import { SidebarNav } from '../components/Sidebar'
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import EventLog from '../components/EventLog'
+import { EventLog } from '../components/EventLog/EventLog'
 import ThreatSummary from '../components/ThreatSummary'
 import SystemHealth from '../components/SystemHealth'
 import AlertComponent from '../components/AlertComponent'

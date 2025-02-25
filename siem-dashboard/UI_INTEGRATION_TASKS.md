@@ -178,53 +178,24 @@
 
 ## System Metrics Dashboard
 
-- [ ] Database Enhancements
+See [METRICS_DASHBOARD_TASKS.md](./METRICS_DASHBOARD_TASKS.md) for detailed implementation tasks.
 
-  - Create system_metrics_hourly view for aggregated metrics
-  - Create process_metrics_hourly view for process stats
-  - Add performance indexes for metrics querying
-  - Add data retention policies
+- [ ] Phase 1: Core Integration
 
-- [ ] Backend API Endpoints
+  - Set up metrics data pipeline
+  - Implement basic metrics display
+  - Create real-time updates system
 
-  - Create /api/v1/metrics/system endpoint
-  - Create /api/v1/metrics/processes endpoint
-  - Create /api/v1/metrics/hosts endpoint
-  - Implement metrics aggregation service
+- [ ] Phase 2: Advanced Features
 
-- [ ] System Overview Component
+  - Add detailed process monitoring
+  - Implement host management
+  - Create advanced visualizations
 
-  - Create MetricsProvider context
-  - Implement real-time metrics display
-  - Add historical trends graphs
-  - Create host selector component
-
-- [ ] Process Monitor Component
-
-  - Create ProcessTable component with sorting/filtering
-  - Implement ProcessDetails modal
-  - Add process metrics graphs
-  - Create process search functionality
-
-- [ ] Host Overview Component
-
-  - Implement HostSelector component
-  - Create HostMetrics display
-  - Add system resource graphs
-  - Implement top processes list
-
-- [ ] Shared Components
-
-  - Create TimeRangeSelector
-  - Implement MetricsGraph component
-  - Add LoadingState handlers
-  - Create ErrorBoundary component
-
-- [ ] API Integration
-  - Implement MetricsService
-  - Create data models and types
-  - Add error handling
-  - Implement data caching
+- [ ] Phase 3: Optimization
+  - Performance improvements
+  - UI/UX refinements
+  - Documentation and testing
 
 ## Deployment
 
@@ -242,3 +213,109 @@ Priority levels should be assigned based on:
 4. Nice-to-have features
 
 Each task should be assigned to a sprint based on dependencies and resource availability.
+
+# Backend-Frontend Integration Tasks
+
+## 1. API Contract Implementation
+
+```typescript
+// Generated from backend's domain/alert.go
+export interface Alert {
+  id: string;
+  title: string;
+  description: string;
+  severity: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  status: "OPEN" | "RESOLVED" | "IGNORED";
+  source: string;
+  createdAt: string; // ISO 8601
+  relatedLogs: string[];
+}
+
+// services/alertService.ts
+export const fetchAlerts = async (params: {
+  timeRange?: [Date, Date];
+  severity?: Alert["severity"];
+  page?: number;
+}) => {
+  // Implementation using axios
+};
+```
+
+## 2. Real-Time Integration
+
+```mermaid
+sequenceDiagram
+    participant F as Frontend
+    participant B as Backend
+    F->>B: WS /api/v1/alerts/stream
+    loop Alert Updates
+        B->>F: {"event": "NEW_ALERT", data: Alert}
+        B->>F: {"event": "STATUS_CHANGE", id: "alert123"}
+    end
+```
+
+## 3. Critical Performance Paths
+
+- Batch API requests using backend's batch endpoints
+- Cache configuration matching backend TTL:
+
+```yaml
+# log-aggregator/config.yaml
+cache:
+  ttl: 2m
+  time_range_ttl: 1m
+```
+
+## 4. Security Implementation
+
+```typescript
+// contexts/AuthContext.tsx
+const API_KEY_STORAGE_KEY = "log_aggregator_api_key";
+
+export const useAuth = () => {
+  const [apiKey, setApiKey] = useState<string | null>(
+    localStorage.getItem(API_KEY_STORAGE_KEY)
+  );
+
+  // Add key to all requests
+  axios.interceptors.request.use((config) => ({
+    ...config,
+    headers: {
+      ...config.headers,
+      "X-API-Key": apiKey,
+    },
+  }));
+};
+```
+
+## 5. Integration Test Plan
+
+```gherkin
+Feature: Alert Streaming
+  Scenario: Receive real-time alert
+    Given the backend has new alerts
+    When I connect to the alert stream
+    Then I should receive alert updates within 500ms
+```
+
+## 6. Developer Task Breakdown
+
+1. **API Service Implementation** - 8h
+
+   - Location: `siem-dashboard/app/services/alertService.ts`
+   - Depends on: Backend API docs
+
+2. **WebSocket Integration** - 6h
+
+   - Location: `siem-dashboard/hooks/useAlertStream.ts`
+   - Test with: `log-aggregator/internal/handler/alert_handler.go`
+
+3. **Security Context** - 4h
+   - Add to: `siem-dashboard/app/contexts/AuthContext.tsx`
+   - Validate with: `log-aggregator/internal/middleware/auth.go`
+
+| Task             | Est. Hours | Owner          | Status  |
+| ---------------- | ---------- | -------------- | ------- |
+| API Base Service | 8          | Frontend Team  | Pending |
+| Alert Streaming  | 6          | Fullstack Team | Pending |
+| Cache Sync       | 3          | Backend Team   | Pending |
