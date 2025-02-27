@@ -317,3 +317,66 @@ Status: Planned
 - All new features should follow the project's coding standards
 - Integration tests should be written for all components
 - Performance benchmarks should be established early
+
+# SIEM Dashboard Tasks
+
+## Build and Deployment Issues [Priority: High]
+Status: Completed
+- [x] Identify Next.js build issue
+  - Error: Could not find a production build in the '.next' directory
+  - Root cause: Attempting to run production server without building first
+  - Solution: Run 'next build' before 'next start'
+- [x] Document proper build and deployment process
+- [ ] Add build step to deployment scripts
+
+[2025-02-27]
+- Identified issue with SIEM dashboard failing to start in production mode
+- Error occurs when trying to run 'npm start' without first building the application
+- Solution is to run 'next build' before 'npm start'
+- Fixed import errors in dashboard/page.tsx:
+  - Changed AlertComponent import to use Alert from '../components/Alert'
+  - Fixed SystemHealth import to use direct path '../components/SystemHealth/SystemHealth'
+  - Updated component references in JSX to match imported names
+- Successfully built and started the SIEM dashboard in production mode
+
+## Event Emitter Memory Leak Warning [Priority: Medium]
+Status: Completed
+- [x] Identify source of MaxListenersExceededWarning
+  - Error: MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Server]. MaxListeners is 10.
+  - Root cause: Multiple components with polling intervals creating HTTP requests without proper cleanup
+  - Solution: Increase the default max listeners limit and optimize polling strategies
+- [x] Implement fix for MaxListenersExceededWarning
+  - Created utils/eventEmitterConfig.ts to increase the default max listeners limit
+  - Added import to app/layout.tsx to ensure early loading
+  - Increased limit from 10 to 20 to accommodate future components
+
+[2025-02-27]
+- Identified issue with MaxListenersExceededWarning in the SIEM dashboard
+- Warning occurs due to multiple components using polling intervals (useSystemMetrics, useEventLog, useAlerts, useNetworkTraffic, useSystemHealth)
+- Each component creates HTTP requests that add 'close' event listeners to the server
+- The default max listeners limit is 10, but we have 11 listeners being added
+- Created utils/eventEmitterConfig.ts to increase the default max listeners limit to 20
+- Added import to app/layout.tsx to ensure the configuration is loaded early in the application lifecycle
+- Added utility functions to get and set max listeners count for future flexibility
+
+## Process Termination Hanging Issue [Priority: High]
+Status: Completed
+- [x] Identify source of Ctrl+C hanging issue
+  - Issue: Application hangs when trying to terminate with Ctrl+C
+  - Root cause: Multiple polling intervals and event listeners not being properly cleaned up during termination
+  - Solution: Implement proper signal handlers to ensure all resources are cleaned up on termination
+- [x] Implement fix for Ctrl+C hanging issue
+  - Created utils/signalHandlers.ts to handle termination signals (SIGINT, SIGTERM)
+  - Added cleanup logic to reset EventEmitter max listeners and force garbage collection
+  - Added handlers for uncaught exceptions and unhandled promise rejections
+  - Imported signal handlers in app/layout.tsx to ensure early registration
+
+[2025-02-27]
+- Identified issue with SIEM dashboard hanging when terminated with Ctrl+C
+- Issue started after migrating to hooks + component architecture
+- Root cause is multiple hooks (useSystemMetrics, useNetworkTraffic, useEventLog, useAlerts, useSystemHealth) setting up polling intervals
+- While each hook has cleanup functions for component unmounting, these aren't properly executed during abrupt termination
+- Created utils/signalHandlers.ts with proper handlers for SIGINT (Ctrl+C) and SIGTERM signals
+- Implemented cleanup logic to reset EventEmitter max listeners and force garbage collection
+- Added handlers for uncaught exceptions and unhandled promise rejections to ensure graceful shutdown
+- Imported signal handlers in app/layout.tsx to ensure they're registered early in the application lifecycle
