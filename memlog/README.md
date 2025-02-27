@@ -37,16 +37,34 @@ memlog/
 
 The memlog system includes several utility scripts to help manage tasks:
 
-### 1. migrate-memlog.sh
+### 1. custom-migrate.sh
 
-Migrates from the old flat memlog structure to the new hierarchical structure.
+Migrates from the old flat memlog structure to the new hierarchical structure, handling mixed project files by properly separating them.
+
+```bash
+cd memlog
+./custom-migrate.sh
+```
+
+### 2. cleanup-after-migration.sh
+
+Cleans up redundant files after migration by moving them to a backup directory.
+
+```bash
+cd memlog
+./cleanup-after-migration.sh
+```
+
+### 3. migrate-memlog.sh
+
+A simpler migration script for cases where projects are not mixed in the same file.
 
 ```bash
 cd memlog
 ./migrate-memlog.sh
 ```
 
-### 2. create-project.sh
+### 4. create-project.sh
 
 Creates a new project task file with standardized format.
 
