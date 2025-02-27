@@ -150,16 +150,69 @@ export function MetricsDisplay({ data, onRefresh }: Props): JSX.Element {
 
 ## 1. Memlog System
 
-- Always create/verify the 'memlog' folder when starting any project
-- Each project should have its own tasks log file in the memlog folder, named according to the project (e.g., log-aggregator.tasks.log, system-monitoring-agent.tasks.log, etc.)
-- The memlog folder must also contain shared tracking files:
-  - changelog.md: For tracking overall system changes
-  - stability_checklist.md: For tracking system-wide stability metrics
-  - url_debug_checklist.md: For tracking endpoint and URL validations
-- Verify and update these files before providing any responses or taking any actions
-- Use these logs to track user progress, system state, and persistent data between conversations
-- When working on a specific project, reference and update its dedicated tasks log file
-- Cross-reference between task logs when changes in one project affect others
+### Directory Structure
+
+The memlog system follows a hierarchical structure to optimize organization and token usage:
+
+```
+memlog/
+├── active/                 # Active tasks and current status
+│   ├── log-aggregator.md
+│   ├── system-monitoring-gateway.md
+│   ├── siem-dashboard.md
+│   └── ...
+├── archived/               # Archived completed tasks by project
+│   ├── log-aggregator/
+│   │   ├── 2024-Q1.md
+│   │   └── 2024-Q2.md
+│   ├── system-monitoring-gateway/
+│   │   └── 2024-Q1.md
+│   └── ...
+├── shared/                 # Shared tracking files
+│   ├── changelog.md
+│   ├── stability_checklist.md
+│   └── url_debug_checklist.md
+└── index.md                # Master index of all projects and their status
+```
+
+### Key Principles
+
+- **Selective Loading**: Only load the index file and relevant active task files to minimize token usage
+- **Regular Archiving**: Move completed tasks to archive files organized by project and time period
+- **Standardized Format**: Follow consistent formatting for all task files
+- **Cross-Referencing**: Use links between files rather than duplicating information
+
+### Required Actions
+
+1. **Before Starting Work**:
+
+   - Check the index file (`memlog/index.md`) for project status overview
+   - Load the relevant active task file for the specific project
+   - Verify and update shared tracking files as needed
+
+2. **During Task Execution**:
+
+   - Update the active task file with progress, status changes, and new information
+   - Add detailed timestamps for all updates
+   - Cross-reference related tasks in other projects when applicable
+
+3. **After Task Completion**:
+
+   - Mark tasks as completed in the active file
+   - Consider if completed tasks should be archived (based on age and relevance)
+   - Update the index file to reflect current project status
+
+4. **For New Projects**:
+   - Create a new active task file following the standardized format
+   - Add the project to the index file
+   - Set up initial task structure and priorities
+
+### File Maintenance
+
+- Keep active files focused on current and upcoming tasks
+- Maintain only the last 2 weeks of updates in active files
+- Archive completed tasks quarterly or when files become too large
+- Ensure all files follow the standardized format for consistency
 
 ## 2. Task Breakdown and Execution
 
