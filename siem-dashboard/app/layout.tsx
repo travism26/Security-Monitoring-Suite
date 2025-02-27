@@ -1,6 +1,10 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from './contexts/AuthContext'
+// Import the EventEmitter configuration to increase max listeners limit
+import './utils/eventEmitterConfig'
+// Import signal handlers for proper cleanup on termination
+import './utils/signalHandlers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {

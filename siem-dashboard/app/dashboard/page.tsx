@@ -6,10 +6,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { SidebarNav } from '../components/Sidebar'
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
 import { EventLog } from '../components/EventLog/EventLog'
-import ThreatSummary from '../components/ThreatSummary'
-import SystemHealth from '../components/SystemHealth'
-import AlertComponent from '../components/AlertComponent'
-import NetworkTraffic from '../components/NetworkTraffic'
+import { ThreatSummary } from '../components/ThreatSummary'
+import { SystemHealth } from '../components/SystemHealth/SystemHealth'
+import { Alert } from '../components/Alert'
+import { NetworkTraffic } from '../components/NetworkTraffic'
 
 export default function Dashboard() {
   const { user, loading } = useAuth()
@@ -56,7 +56,7 @@ export default function Dashboard() {
               <EventLog />
               <ThreatSummary />
               <SystemHealth />
-              <AlertComponent />
+              <Alert />
               <NetworkTraffic />
             </div>
           </main>
